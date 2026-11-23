@@ -1,0 +1,20 @@
+
+# Java compiled files
+*.class
+bin/
+target/
+
+# IDE workspace files
+.metadata/
+.settings/
+
+# Temporary files and logs
+*.log
+*.tmp
+.DS_Store
+
+# Private credentials and configuration
+.env
+.env.*
+*.key
+secrets.properties
