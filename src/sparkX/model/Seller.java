@@ -18,6 +18,34 @@ public class Seller extends User {
     private double pricePerUnit;
     private double totalEarnings;
 
+    // Account-only constructor
+    public Seller(String userId, String fullName, String email) {
+        this(userId, fullName, email, null);
+    }
+
+    // Account-only constructor with password
+    public Seller(String userId, String fullName, String email,
+                  String password) {
+
+        super(userId, fullName, email, password);
+
+        sellerType = "Not configured";
+        energySource = "Not configured";
+
+        generationCapacityKw = 0;
+        operatingHours = 0;
+        performanceRatio = 0;
+        ownConsumptionUnits = 0;
+
+        generatedUnits = 0;
+        availableUnits = 0;
+        reservedUnits = 0;
+
+        pricePerUnit = 0;
+        totalEarnings = 0;
+    }
+
+    // Full constructor for an already configured seller
     public Seller(String userId, String fullName, String email,
                   String sellerType, String energySource,
                   double generationCapacityKw,
@@ -28,16 +56,55 @@ public class Seller extends User {
 
         super(userId, fullName, email);
 
+        this.sellerType = "Not configured";
+        this.energySource = "Not configured";
+
+        configureProfile(
+            sellerType,
+            energySource,
+            generationCapacityKw,
+            operatingHours,
+            performanceRatio,
+            ownConsumptionUnits,
+            pricePerUnit
+        );
+    }
+
+    @Override
+    public String getRole() {
+        return "Seller";
+    }
+
+    // Saves or updates seller profile information
+    public void configureProfile(
+            String sellerType,
+            String energySource,
+            double generationCapacityKw,
+            double operatingHours,
+            double performanceRatio,
+            double ownConsumptionUnits,
+            double pricePerUnit) {
+
         if (sellerType == null || sellerType.trim().isEmpty()
                 || energySource == null || energySource.trim().isEmpty()
                 || generationCapacityKw <= 0
                 || operatingHours <= 0 || operatingHours > 24
                 || performanceRatio <= 0 || performanceRatio > 1
                 || ownConsumptionUnits < 0
-                || pricePerUnit <= 0) {
+                || pricePerUnit <= 0
+                || Double.isNaN(generationCapacityKw)
+                || Double.isNaN(operatingHours)
+                || Double.isNaN(performanceRatio)
+                || Double.isNaN(ownConsumptionUnits)
+                || Double.isNaN(pricePerUnit)
+                || Double.isInfinite(generationCapacityKw)
+                || Double.isInfinite(operatingHours)
+                || Double.isInfinite(performanceRatio)
+                || Double.isInfinite(ownConsumptionUnits)
+                || Double.isInfinite(pricePerUnit)) {
 
             throw new IllegalArgumentException(
-                "Invalid seller information."
+                "Invalid seller profile information."
             );
         }
 
@@ -47,21 +114,19 @@ public class Seller extends User {
         this.operatingHours = operatingHours;
         this.performanceRatio = performanceRatio;
         this.ownConsumptionUnits = ownConsumptionUnits;
-
         this.pricePerUnit = pricePerUnit;
-
-        this.generatedUnits = 0;
-        this.availableUnits = 0;
-        this.reservedUnits = 0;
-        this.totalEarnings = 0;
     }
 
-    @Override
-    public String getRole() {
-        return "Seller";
-    }
-
+    // Generates estimated daily energy
     public double generateDailyEnergy() {
+
+        // Prevent overwriting energy already available or reserved.
+        if (availableUnits > 0 || reservedUnits > 0) {
+            throw new IllegalStateException(
+                "Existing energy must be traded or released "
+                + "before generating again."
+            );
+        }
 
         generatedUnits = generationCapacityKw
                 * operatingHours
@@ -71,14 +136,14 @@ public class Seller extends User {
             0, generatedUnits - ownConsumptionUnits
         );
 
-        reservedUnits = 0;
-
         return generatedUnits;
     }
 
     public boolean reserveUnits(double units) {
 
-        if (units <= 0 || units > availableUnits) {
+        if (units <= 0 || units > availableUnits
+                || Double.isNaN(units)
+                || Double.isInfinite(units)) {
             return false;
         }
 
@@ -90,7 +155,8 @@ public class Seller extends User {
 
     public boolean completeSale(double units, double salePrice) {
 
-        if (units <= 0 || units > reservedUnits || salePrice <= 0) {
+        if (units <= 0 || units > reservedUnits
+                || salePrice <= 0) {
             return false;
         }
 
@@ -110,6 +176,38 @@ public class Seller extends User {
 
         reservedUnits -= units;
         availableUnits += units;
+    }
+
+    // Checks whether the seller has configured their profile
+    public boolean isProfileConfigured() {
+
+        return !sellerType.equals("Not configured")
+                && !energySource.equals("Not configured");
+    }
+
+    // Getters
+    public String getSellerType() {
+        return sellerType;
+    }
+
+    public String getEnergySource() {
+        return energySource;
+    }
+
+    public double getGenerationCapacityKw() {
+        return generationCapacityKw;
+    }
+
+    public double getOperatingHours() {
+        return operatingHours;
+    }
+
+    public double getPerformanceRatio() {
+        return performanceRatio;
+    }
+
+    public double getOwnConsumptionUnits() {
+        return ownConsumptionUnits;
     }
 
     public double getGeneratedUnits() {
@@ -132,21 +230,13 @@ public class Seller extends User {
         return totalEarnings;
     }
 
-    public String getSellerType() {
-        return sellerType;
-    }
-
-    public String getEnergySource() {
-        return energySource;
-    }
-
-    public double getGenerationCapacityKw() {
-        return generationCapacityKw;
-    }
-
+    // Updates the default selling price
     public void setPricePerUnit(double pricePerUnit) {
 
-        if (pricePerUnit <= 0) {
+        if (pricePerUnit <= 0
+                || Double.isNaN(pricePerUnit)
+                || Double.isInfinite(pricePerUnit)) {
+
             throw new IllegalArgumentException(
                 "Price must be greater than zero."
             );

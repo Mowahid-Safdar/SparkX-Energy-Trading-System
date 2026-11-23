@@ -6,8 +6,17 @@ public abstract class User {
     private String userId;
     private String fullName;
     private String email;
+    private String password;
 
+    // Existing constructor
     public User(String userId, String fullName, String email) {
+
+        this(userId, fullName, email, null);
+    }
+
+    // Constructor with password
+    public User(String userId, String fullName, String email,
+                String password) {
 
         if (userId == null || userId.trim().isEmpty()
                 || fullName == null || fullName.trim().isEmpty()
@@ -18,9 +27,17 @@ public abstract class User {
             );
         }
 
+        if (password != null && password.trim().isEmpty()) {
+
+            throw new IllegalArgumentException(
+                "Password cannot be empty."
+            );
+        }
+
         this.userId = userId;
         this.fullName = fullName;
         this.email = email;
+        this.password = password;
     }
 
     public String getUserId() {
@@ -33,6 +50,16 @@ public abstract class User {
 
     public String getEmail() {
         return email;
+    }
+
+    // Verify a login password
+    public boolean verifyPassword(String enteredPassword) {
+
+        if (password == null || enteredPassword == null) {
+            return false;
+        }
+
+        return password.equals(enteredPassword);
     }
 
     public abstract String getRole();
