@@ -9,6 +9,7 @@ import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
 import java.time.format.DateTimeFormatter;
 
+import sparkX.ai.GeminiService;
 import sparkX.data.MarketplaceData;
 import sparkX.model.Buyer;
 import sparkX.model.EnergyOffer;
@@ -31,12 +32,19 @@ public class BuyerDashboard extends JFrame {
     private EnergyOffer[] displayedOffers;
     private int displayedOfferCount;
 
+    private JTextArea advisorOutput;
+    private JButton advisorButton;
+
+    private GeminiService geminiService;
+
     public BuyerDashboard(
             MarketplaceData marketplaceData,
             Buyer buyer) {
 
         this.marketplaceData = marketplaceData;
         this.buyer = buyer;
+
+        geminiService = new GeminiService();
 
         setTitle("SparkX - Buyer Dashboard");
         setSize(1250, 850);
@@ -265,6 +273,11 @@ public class BuyerDashboard extends JFrame {
         tabbedPane.addTab(
             "Transaction History",
             createTransactionHistoryPanel()
+        );
+
+        tabbedPane.addTab(
+            "AI Energy Advisor",
+            createAdvisorPanel()
         );
 
         tabbedPane.setAlignmentX(Component.LEFT_ALIGNMENT);
@@ -509,7 +522,6 @@ public class BuyerDashboard extends JFrame {
 
         styleTable(historyTable);
 
-        // Give every column enough room
         historyTable.setAutoResizeMode(
             JTable.AUTO_RESIZE_OFF
         );
@@ -567,6 +579,268 @@ public class BuyerDashboard extends JFrame {
         }
 
         return historyPanel;
+    }
+
+    // Creates AI Energy Advisor panel
+    private JPanel createAdvisorPanel() {
+
+        JPanel advisorPanel = new JPanel(
+            new BorderLayout(12, 12)
+        );
+
+        advisorPanel.setBackground(panelColor);
+
+        advisorPanel.setBorder(
+            BorderFactory.createEmptyBorder(20, 20, 20, 20)
+        );
+
+        JLabel heading = new JLabel(
+            "Your Personal Energy Advisor"
+        );
+
+        heading.setFont(
+            new Font("Arial", Font.BOLD, 20)
+        );
+
+        heading.setForeground(blueColor);
+
+        JLabel description = new JLabel(
+            "<html>Get AI-powered recommendations based on your "
+            + "energy demand, budget and available marketplace offers.</html>"
+        );
+
+        description.setFont(
+            new Font("Arial", Font.PLAIN, 13)
+        );
+
+        description.setForeground(mutedColor);
+
+        JPanel topPanel = new JPanel(
+            new BorderLayout(5, 8)
+        );
+
+        topPanel.setBackground(panelColor);
+
+        topPanel.add(heading, BorderLayout.NORTH);
+        topPanel.add(description, BorderLayout.CENTER);
+
+        advisorOutput = new JTextArea();
+
+        advisorOutput.setEditable(false);
+        advisorOutput.setLineWrap(true);
+        advisorOutput.setWrapStyleWord(true);
+
+        advisorOutput.setFont(
+            new Font("Arial", Font.PLAIN, 14)
+        );
+
+        advisorOutput.setBackground(backgroundColor);
+        advisorOutput.setForeground(textColor);
+
+        advisorOutput.setBorder(
+            BorderFactory.createEmptyBorder(15, 15, 15, 15)
+        );
+
+        advisorOutput.setText(
+            "Welcome to SparkX AI Energy Advisor!\n\n"
+            + "Click the button below to analyze your current "
+            + "energy requirements and available marketplace offers."
+        );
+
+        JScrollPane outputScrollPane =
+            new JScrollPane(advisorOutput);
+
+        outputScrollPane.getViewport().setBackground(backgroundColor);
+
+        advisorButton = new JButton("Generate Advice");
+
+        styleButton(advisorButton, blueColor, Color.WHITE);
+
+        advisorButton.setFont(
+            new Font("Arial", Font.BOLD, 14)
+        );
+
+        advisorButton.setPreferredSize(
+            new Dimension(180, 42)
+        );
+
+        advisorButton.addActionListener(
+            e -> generateBuyerAdvice()
+        );
+
+        JPanel bottomPanel = new JPanel(
+            new FlowLayout(FlowLayout.RIGHT)
+        );
+
+        bottomPanel.setBackground(panelColor);
+        bottomPanel.add(advisorButton);
+
+        advisorPanel.add(topPanel, BorderLayout.NORTH);
+        advisorPanel.add(outputScrollPane, BorderLayout.CENTER);
+        advisorPanel.add(bottomPanel, BorderLayout.SOUTH);
+
+        return advisorPanel;
+    }
+
+    // Generates buyer recommendations using Gemini
+    private void generateBuyerAdvice() {
+
+        if (!buyer.isProfileConfigured()) {
+
+            JOptionPane.showMessageDialog(
+                this,
+                "Please configure your buyer profile first.",
+                "Profile Required",
+                JOptionPane.WARNING_MESSAGE
+            );
+
+            return;
+        }
+
+        String prompt = buildBuyerPrompt();
+
+        advisorButton.setEnabled(false);
+        advisorButton.setText("Generating...");
+
+        advisorOutput.setText(
+            "Analyzing your energy requirements...\n\n"
+            + "Please wait while Gemini generates your recommendations."
+        );
+
+        SwingWorker<String, Void> worker =
+            new SwingWorker<String, Void>() {
+
+                @Override
+                protected String doInBackground() throws Exception {
+
+                    return geminiService.generateResponse(prompt);
+                }
+
+                @Override
+                protected void done() {
+
+                    advisorButton.setEnabled(true);
+                    advisorButton.setText("Generate Advice");
+
+                    try {
+
+                        String advice = get();
+
+                        advisorOutput.setText(advice);
+                        advisorOutput.setCaretPosition(0);
+
+                    } catch (Exception ex) {
+
+                        advisorOutput.setText(
+                            "Unable to generate AI recommendations.\n\n"
+                            + "Gemini may be temporarily unavailable, "
+                            + "or the API request may have failed.\n\n"
+                            + "Please try again later.\n\n"
+                            + "Technical details: "
+                            + ex.getMessage()
+                        );
+
+                        advisorOutput.setCaretPosition(0);
+                    }
+                }
+            };
+
+        worker.execute();
+    }
+
+    // Builds a prompt using current buyer and marketplace data
+    private String buildBuyerPrompt() {
+
+        StringBuilder prompt = new StringBuilder();
+
+        prompt.append(
+            "You are the AI Energy Advisor inside SparkX, "
+            + "a decentralized peer-to-peer energy trading system.\n\n"
+        );
+
+        prompt.append("Analyze the following buyer information:\n");
+
+        prompt.append(
+            "Buyer name: " + buyer.getFullName() + "\n"
+        );
+
+        prompt.append(
+            "Remaining energy demand: "
+            + buyer.getRequiredUnits() + " units\n"
+        );
+
+        prompt.append(
+            "Maximum acceptable price: Rs. "
+            + buyer.getMaxPricePerUnit() + " per unit\n"
+        );
+
+        prompt.append(
+            "Total amount already spent: Rs. "
+            + buyer.getTotalSpent() + "\n"
+        );
+
+        prompt.append(
+            "Demand satisfied: "
+            + buyer.isDemandSatisfied() + "\n\n"
+        );
+
+        prompt.append("Available active marketplace offers:\n");
+
+        int offerCount =
+            marketplaceData.getTradingService().getOfferCount();
+
+        int availableOfferCount = 0;
+
+        for (int i = 0; i < offerCount; i++) {
+
+            EnergyOffer offer =
+                marketplaceData.getTradingService().getOffer(i);
+
+            if (offer.isActive()
+                    && offer.getRemainingUnits() > 0) {
+
+                availableOfferCount++;
+
+                prompt.append("\nOffer ID: ")
+                    .append(offer.getOfferId());
+
+                prompt.append("\nSeller: ")
+                    .append(offer.getSeller().getFullName());
+
+                prompt.append("\nEnergy source: ")
+                    .append(offer.getSeller().getEnergySource());
+
+                prompt.append("\nAvailable units: ")
+                    .append(offer.getRemainingUnits());
+
+                prompt.append("\nPrice per unit: Rs. ")
+                    .append(offer.getPricePerUnit());
+
+                prompt.append("\n");
+            }
+        }
+
+        if (availableOfferCount == 0) {
+
+            prompt.append(
+                "There are currently no active marketplace offers.\n"
+            );
+        }
+
+        prompt.append(
+            "\nProvide a clear and practical analysis covering:\n"
+            + "1. Whether the available energy supply can meet "
+            + "the buyer's remaining demand.\n"
+            + "2. Which offers are within the buyer's maximum budget.\n"
+            + "3. The most economical available options.\n"
+            + "4. Any shortage between demand and available supply.\n"
+            + "5. Practical recommendations for the buyer.\n\n"
+            + "Use the actual figures provided. Do not invent offers, "
+            + "prices, or energy quantities. Do not claim that a purchase "
+            + "has been made. Format the response with clear headings."
+        );
+
+        return prompt.toString();
     }
 
     // Applies common table styling

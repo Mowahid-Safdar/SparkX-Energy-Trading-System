@@ -18,3 +18,7 @@ target/
 .env.*
 *.key
 secrets.properties
+
+.env
+.env.*
+!.env.example

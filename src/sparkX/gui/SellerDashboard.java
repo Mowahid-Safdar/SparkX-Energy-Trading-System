@@ -10,6 +10,7 @@ import sparkX.data.MarketplaceData;
 import sparkX.model.Seller;
 import sparkX.model.EnergyOffer;
 import sparkX.model.Transaction;
+import sparkX.ai.GeminiService;
 
 public class SellerDashboard extends JFrame {
 
@@ -468,6 +469,11 @@ public class SellerDashboard extends JFrame {
             createSalesHistoryPanel()
         );
 
+        tabbedPane.addTab(
+            "Seller AI Advisor",
+            createSellerAdvisorPanel()
+        );
+
         tabbedPane.setPreferredSize(
             new Dimension(1100, 450)
         );
@@ -486,6 +492,333 @@ public class SellerDashboard extends JFrame {
 
         mainPanel.revalidate();
         mainPanel.repaint();
+    }
+
+    // Creates the seller AI advisor panel
+    private JPanel createSellerAdvisorPanel() {
+
+        JPanel advisorPanel = new JPanel(new BorderLayout(12, 12));
+
+        advisorPanel.setBackground(panelColor);
+
+        advisorPanel.setBorder(
+            BorderFactory.createEmptyBorder(20, 20, 20, 20)
+        );
+
+        JLabel titleLabel = new JLabel(
+            "SparkX Seller AI Advisor"
+        );
+
+        titleLabel.setFont(
+            new Font("Arial", Font.BOLD, 21)
+        );
+
+        titleLabel.setForeground(greenColor);
+
+        JLabel descriptionLabel = new JLabel(
+            "<html>Get AI-powered insights about your energy production, "
+            + "pricing, marketplace offers and selling performance.</html>"
+        );
+
+        descriptionLabel.setFont(
+            new Font("Arial", Font.PLAIN, 13)
+        );
+
+        descriptionLabel.setForeground(mutedColor);
+
+        JPanel topPanel = new JPanel();
+
+        topPanel.setBackground(panelColor);
+
+        topPanel.setLayout(
+            new BoxLayout(topPanel, BoxLayout.Y_AXIS)
+        );
+
+        topPanel.add(titleLabel);
+        topPanel.add(Box.createVerticalStrut(8));
+        topPanel.add(descriptionLabel);
+
+        advisorPanel.add(topPanel, BorderLayout.NORTH);
+
+        JTextArea outputArea = new JTextArea();
+
+        outputArea.setEditable(false);
+        outputArea.setLineWrap(true);
+        outputArea.setWrapStyleWord(true);
+
+        outputArea.setFont(
+            new Font("Arial", Font.PLAIN, 14)
+        );
+
+        outputArea.setForeground(textColor);
+        outputArea.setBackground(backgroundColor);
+
+        outputArea.setText(
+            "Your personalized seller analysis will appear here.\n\n"
+            + "Click the button below to analyze your seller "
+            + "profile and marketplace performance."
+        );
+
+        outputArea.setBorder(
+            BorderFactory.createEmptyBorder(15, 15, 15, 15)
+        );
+
+        JScrollPane scrollPane = new JScrollPane(outputArea);
+
+        scrollPane.setBorder(
+            BorderFactory.createLineBorder(
+                new Color(55, 65, 75)
+            )
+        );
+
+        scrollPane.getViewport().setBackground(backgroundColor);
+
+        advisorPanel.add(scrollPane, BorderLayout.CENTER);
+
+        JButton generateAdviceButton =
+            new JButton("Generate Seller Advice");
+
+        styleButton(
+            generateAdviceButton,
+            greenColor,
+            Color.BLACK
+        );
+
+        generateAdviceButton.setFont(
+            new Font("Arial", Font.BOLD, 14)
+        );
+
+        generateAdviceButton.setPreferredSize(
+            new Dimension(220, 42)
+        );
+
+        generateAdviceButton.addActionListener(e -> {
+
+            String prompt = buildSellerAdvisorPrompt();
+
+            outputArea.setText(
+                "Analyzing your seller profile and marketplace data...\n\n"
+                + "Please wait while the AI advisor prepares "
+                + "your recommendations."
+            );
+
+            generateAdviceButton.setEnabled(false);
+            generateAdviceButton.setText("Analyzing...");
+
+            SwingWorker<String, Void> worker =
+                new SwingWorker<String, Void>() {
+
+                @Override
+                protected String doInBackground() throws Exception {
+
+                    GeminiService advisor = new GeminiService();
+
+                    return advisor.generateResponse(prompt);
+                }
+
+                @Override
+                protected void done() {
+
+                    generateAdviceButton.setEnabled(true);
+                    generateAdviceButton.setText(
+                        "Generate Seller Advice"
+                    );
+
+                    try {
+
+                        outputArea.setText(get());
+                        outputArea.setCaretPosition(0);
+
+                    } catch (Exception ex) {
+
+                        Throwable cause = ex.getCause();
+
+                        String error = cause != null
+                            ? cause.getMessage()
+                            : ex.getMessage();
+
+                        outputArea.setText(
+                            "Unable to generate seller recommendations.\n\n"
+                            + "Please check your Gemini API connection "
+                            + "and try again.\n\n"
+                            + "Technical details: " + error
+                        );
+                    }
+                }
+            };
+
+            worker.execute();
+        });
+
+        JPanel buttonPanel = new JPanel(
+            new FlowLayout(FlowLayout.CENTER)
+        );
+
+        buttonPanel.setBackground(panelColor);
+        buttonPanel.add(generateAdviceButton);
+
+        advisorPanel.add(buttonPanel, BorderLayout.SOUTH);
+
+        return advisorPanel;
+    }
+
+    // Builds a prompt using the seller's actual application data
+    private String buildSellerAdvisorPrompt() {
+
+        StringBuilder prompt = new StringBuilder();
+
+        prompt.append(
+            "You are the SparkX AI Energy Trading Advisor. "
+            + "Analyze the following seller data and provide "
+            + "practical, clear and personalized recommendations.\n\n"
+        );
+
+        prompt.append("SELLER INFORMATION\n");
+        prompt.append("-------------------------\n");
+
+        prompt.append("Seller type: ")
+            .append(seller.getSellerType()).append("\n");
+
+        prompt.append("Energy source: ")
+            .append(seller.getEnergySource()).append("\n");
+
+        prompt.append("Profile configured: ")
+            .append(seller.isProfileConfigured()).append("\n");
+
+        prompt.append("\nENERGY PERFORMANCE\n");
+        prompt.append("-------------------------\n");
+
+        prompt.append("Total generated units: ")
+            .append(seller.getGeneratedUnits()).append("\n");
+
+        prompt.append("Available units: ")
+            .append(seller.getAvailableUnits()).append("\n");
+
+        prompt.append("Reserved units: ")
+            .append(seller.getReservedUnits()).append("\n");
+
+        prompt.append("Current price per unit: Rs. ")
+            .append(seller.getPricePerUnit()).append("\n");
+
+        prompt.append("Total earnings: Rs. ")
+            .append(seller.getTotalEarnings()).append("\n");
+
+        prompt.append("\nSELLER'S PUBLISHED OFFERS\n");
+        prompt.append("-------------------------\n");
+
+        int offerCount =
+            marketplaceData.getTradingService().getOfferCount();
+
+        boolean hasOwnOffers = false;
+
+        for (int i = 0; i < offerCount; i++) {
+
+            EnergyOffer offer =
+                marketplaceData.getTradingService().getOffer(i);
+
+            if (offer.getSeller().getUserId()
+                    .equalsIgnoreCase(seller.getUserId())) {
+
+                hasOwnOffers = true;
+
+                prompt.append("Offer ID: ")
+                    .append(offer.getOfferId())
+                    .append(", Offered units: ")
+                    .append(offer.getOfferedUnits())
+                    .append(", Remaining units: ")
+                    .append(offer.getRemainingUnits())
+                    .append(", Price per unit: Rs. ")
+                    .append(offer.getPricePerUnit())
+                    .append(", Active: ")
+                    .append(offer.isActive())
+                    .append("\n");
+            }
+        }
+
+        if (!hasOwnOffers) {
+            prompt.append("The seller has not published any offers.\n");
+        }
+
+        prompt.append("\nCURRENT MARKETPLACE OFFERS\n");
+        prompt.append("-------------------------\n");
+
+        boolean hasMarketOffers = false;
+
+        for (int i = 0; i < offerCount; i++) {
+
+            EnergyOffer offer =
+                marketplaceData.getTradingService().getOffer(i);
+
+            if (offer.isActive()
+                    && !offer.getSeller().getUserId()
+                        .equalsIgnoreCase(seller.getUserId())) {
+
+                hasMarketOffers = true;
+
+                prompt.append("Energy source: ")
+                    .append(offer.getSeller().getEnergySource())
+                    .append(", Remaining units: ")
+                    .append(offer.getRemainingUnits())
+                    .append(", Price per unit: Rs. ")
+                    .append(offer.getPricePerUnit())
+                    .append("\n");
+            }
+        }
+
+        if (!hasMarketOffers) {
+            prompt.append("No other active marketplace offers are available.\n");
+        }
+
+        prompt.append("\nSALES PERFORMANCE\n");
+        prompt.append("-------------------------\n");
+
+        int transactionCount =
+            marketplaceData.getTradingService()
+                .getTransactionCount();
+
+        int sellerSales = 0;
+        double totalSalesRevenue = 0;
+
+        for (int i = 0; i < transactionCount; i++) {
+
+            Transaction transaction =
+                marketplaceData.getTradingService()
+                    .getTransaction(i);
+
+            if (transaction.getSeller().getUserId()
+                    .equalsIgnoreCase(seller.getUserId())) {
+
+                sellerSales++;
+
+                totalSalesRevenue += transaction.getTotalAmount();
+            }
+        }
+
+        prompt.append("Completed sales: ")
+            .append(sellerSales).append("\n");
+
+        prompt.append("Revenue from recorded sales: Rs. ")
+            .append(totalSalesRevenue).append("\n");
+
+        prompt.append("\nYOUR TASK\n");
+        prompt.append("-------------------------\n");
+
+        prompt.append(
+            "Provide your response using these sections:\n"
+            + "1. Overall seller performance\n"
+            + "2. Energy production analysis\n"
+            + "3. Pricing recommendations\n"
+            + "4. Comparison with available marketplace offers\n"
+            + "5. Selling strategy and practical suggestions\n"
+            + "6. Three specific actions the seller should consider\n\n"
+            + "Use the supplied numbers in your analysis. "
+            + "Do not invent missing information, market prices "
+            + "or financial guarantees. Clearly identify suggestions "
+            + "as recommendations rather than guaranteed outcomes. "
+            + "Keep the response professional and easy to understand."
+        );
+
+        return prompt.toString();
     }
 
     // Creates the profile and offers overview
