@@ -5,10 +5,12 @@ import javax.swing.*;
 import java.awt.*;
 
 import sparkX.model.Seller;
+import sparkX.data.MarketplaceData;
 
 public class SellerProfileScreen extends JFrame {
 
     private Seller seller;
+    private MarketplaceData marketplaceData;
 
     private JComboBox<String> sellerTypeBox;
     private JComboBox<String> energySourceBox;
@@ -25,9 +27,12 @@ public class SellerProfileScreen extends JFrame {
     private Color textColor = new Color(241, 245, 249);
     private Color mutedColor = new Color(154, 168, 181);
 
-    public SellerProfileScreen(Seller seller) {
+    public SellerProfileScreen(
+            Seller seller,
+            MarketplaceData marketplaceData) {
 
         this.seller = seller;
+        this.marketplaceData = marketplaceData;
 
         setTitle("SparkX - Configure Seller Profile");
         setSize(650, 700);
@@ -40,15 +45,18 @@ public class SellerProfileScreen extends JFrame {
 
         // HEADER
         JPanel headerPanel = new JPanel();
+
         headerPanel.setBackground(backgroundColor);
         headerPanel.setLayout(new BoxLayout(
             headerPanel, BoxLayout.Y_AXIS
         ));
+
         headerPanel.setBorder(
             BorderFactory.createEmptyBorder(25, 30, 10, 30)
         );
 
         JLabel titleLabel = new JLabel("Seller Profile");
+
         titleLabel.setFont(new Font("Arial", Font.BOLD, 26));
         titleLabel.setForeground(greenColor);
         titleLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
@@ -56,6 +64,7 @@ public class SellerProfileScreen extends JFrame {
         JLabel subtitleLabel = new JLabel(
             "Configure your energy generation details"
         );
+
         subtitleLabel.setFont(new Font("Arial", Font.PLAIN, 14));
         subtitleLabel.setForeground(mutedColor);
         subtitleLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
@@ -68,6 +77,7 @@ public class SellerProfileScreen extends JFrame {
 
         // FORM
         JPanel formPanel = new JPanel(new GridLayout(7, 2, 15, 18));
+
         formPanel.setBackground(panelColor);
         formPanel.setBorder(
             BorderFactory.createEmptyBorder(25, 30, 25, 30)
@@ -110,20 +120,22 @@ public class SellerProfileScreen extends JFrame {
         JPanel footerPanel = new JPanel(
             new FlowLayout(FlowLayout.CENTER, 15, 15)
         );
+
         footerPanel.setBackground(backgroundColor);
 
         JButton saveButton = new JButton("Save Profile");
+
         saveButton.setBackground(greenColor);
         saveButton.setForeground(Color.BLACK);
         saveButton.setFocusPainted(false);
 
         JButton cancelButton = new JButton("Cancel");
+
         cancelButton.setBackground(panelColor);
         cancelButton.setForeground(textColor);
         cancelButton.setFocusPainted(false);
 
         saveButton.addActionListener(e -> saveProfile());
-
         cancelButton.addActionListener(e -> dispose());
 
         footerPanel.add(saveButton);
@@ -131,7 +143,6 @@ public class SellerProfileScreen extends JFrame {
 
         add(footerPanel, BorderLayout.SOUTH);
 
-        // Load existing profile when editing
         loadExistingProfile();
 
         setVisible(true);
@@ -141,6 +152,7 @@ public class SellerProfileScreen extends JFrame {
             JPanel panel, String labelText, JComponent field) {
 
         JLabel label = new JLabel(labelText);
+
         label.setFont(new Font("Arial", Font.PLAIN, 14));
         label.setForeground(textColor);
 
@@ -215,6 +227,9 @@ public class SellerProfileScreen extends JFrame {
                 price
             );
 
+            // Save updated seller information to the local file
+            marketplaceData.saveUsers();
+
             JOptionPane.showMessageDialog(
                 this,
                 "Seller profile saved successfully!"
@@ -237,6 +252,16 @@ public class SellerProfileScreen extends JFrame {
                 this,
                 ex.getMessage(),
                 "Invalid Profile",
+                JOptionPane.ERROR_MESSAGE
+            );
+
+        } catch (IllegalStateException ex) {
+
+            JOptionPane.showMessageDialog(
+                this,
+                "Profile was updated, but could not be saved to file.\n"
+                + ex.getMessage(),
+                "Storage Error",
                 JOptionPane.ERROR_MESSAGE
             );
         }

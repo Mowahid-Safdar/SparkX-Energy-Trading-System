@@ -2,23 +2,26 @@
 package sparkX.gui;
 
 import javax.swing.*;
+import javax.swing.table.DefaultTableModel;
 import java.awt.*;
+import java.time.format.DateTimeFormatter;
 
 import sparkX.data.MarketplaceData;
 import sparkX.model.Seller;
 import sparkX.model.EnergyOffer;
+import sparkX.model.Transaction;
 
 public class SellerDashboard extends JFrame {
 
     private MarketplaceData marketplaceData;
     private Seller seller;
 
-    private Color backgroundColor = new Color(16, 20, 24);
-    private Color panelColor = new Color(27, 35, 43);
-    private Color greenColor = new Color(0, 199, 129);
-    private Color blueColor = new Color(45, 140, 230);
-    private Color textColor = new Color(241, 245, 249);
-    private Color mutedColor = new Color(154, 168, 181);
+    private final Color backgroundColor = new Color(16, 20, 24);
+    private final Color panelColor = new Color(27, 35, 43);
+    private final Color greenColor = new Color(0, 199, 129);
+    private final Color blueColor = new Color(45, 140, 230);
+    private final Color textColor = new Color(241, 245, 249);
+    private final Color mutedColor = new Color(154, 168, 181);
 
     private JPanel mainPanel;
 
@@ -30,31 +33,41 @@ public class SellerDashboard extends JFrame {
         this.seller = seller;
 
         setTitle("SparkX - Seller Dashboard");
-        setSize(950, 650);
+        setSize(1200, 800);
+        setMinimumSize(new Dimension(1050, 700));
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         setLocationRelativeTo(null);
-        setResizable(false);
+        setResizable(true);
 
         getContentPane().setBackground(backgroundColor);
-        setLayout(new BorderLayout(20, 20));
+        setLayout(new BorderLayout(15, 15));
 
         // HEADER
         JPanel headerPanel = new JPanel(new BorderLayout());
-        headerPanel.setBackground(panelColor);
 
+        headerPanel.setBackground(panelColor);
         headerPanel.setBorder(
             BorderFactory.createEmptyBorder(20, 30, 20, 30)
         );
 
-        JLabel titleLabel = new JLabel("SparkX | Seller Dashboard");
-        titleLabel.setFont(new Font("Arial", Font.BOLD, 24));
+        JLabel titleLabel = new JLabel(
+            "SparkX | Seller Dashboard"
+        );
+
+        titleLabel.setFont(
+            new Font("Arial", Font.BOLD, 24)
+        );
+
         titleLabel.setForeground(greenColor);
 
         JLabel welcomeLabel = new JLabel(
             "Welcome, " + seller.getFullName()
         );
 
-        welcomeLabel.setFont(new Font("Arial", Font.PLAIN, 15));
+        welcomeLabel.setFont(
+            new Font("Arial", Font.PLAIN, 15)
+        );
+
         welcomeLabel.setForeground(textColor);
 
         headerPanel.add(titleLabel, BorderLayout.WEST);
@@ -63,21 +76,18 @@ public class SellerDashboard extends JFrame {
         add(headerPanel, BorderLayout.NORTH);
 
         // MAIN CONTENT
-        mainPanel = new JPanel();
+        mainPanel = new JPanel(new BorderLayout(10, 15));
         mainPanel.setBackground(backgroundColor);
-        mainPanel.setLayout(new BorderLayout(15, 20));
 
         mainPanel.setBorder(
-            BorderFactory.createEmptyBorder(10, 30, 20, 30)
+            BorderFactory.createEmptyBorder(10, 30, 10, 30)
         );
 
         add(mainPanel, BorderLayout.CENTER);
 
-        refreshDashboard();
-
         // FOOTER BUTTONS
         JPanel footerPanel = new JPanel(
-            new FlowLayout(FlowLayout.RIGHT, 12, 15)
+            new FlowLayout(FlowLayout.RIGHT, 12, 12)
         );
 
         footerPanel.setBackground(backgroundColor);
@@ -85,9 +95,7 @@ public class SellerDashboard extends JFrame {
         JButton generateButton =
             new JButton("Generate Daily Energy");
 
-        generateButton.setBackground(greenColor);
-        generateButton.setForeground(Color.BLACK);
-        generateButton.setFocusPainted(false);
+        styleButton(generateButton, greenColor, Color.BLACK);
 
         generateButton.addActionListener(
             e -> generateEnergy()
@@ -96,9 +104,7 @@ public class SellerDashboard extends JFrame {
         JButton publishButton =
             new JButton("Publish Offer");
 
-        publishButton.setBackground(blueColor);
-        publishButton.setForeground(Color.WHITE);
-        publishButton.setFocusPainted(false);
+        styleButton(publishButton, blueColor, Color.WHITE);
 
         publishButton.addActionListener(
             e -> publishOffer()
@@ -107,19 +113,24 @@ public class SellerDashboard extends JFrame {
         JButton configureButton =
             new JButton("Configure Profile");
 
-        configureButton.setBackground(panelColor);
-        configureButton.setForeground(textColor);
-        configureButton.setFocusPainted(false);
+        styleButton(configureButton, panelColor, textColor);
 
         configureButton.addActionListener(
             e -> openProfileScreen()
         );
 
+        JButton refreshButton =
+            new JButton("Refresh Dashboard");
+
+        styleButton(refreshButton, panelColor, textColor);
+
+        refreshButton.addActionListener(
+            e -> refreshDashboard()
+        );
+
         JButton logoutButton = new JButton("Logout");
 
-        logoutButton.setBackground(panelColor);
-        logoutButton.setForeground(textColor);
-        logoutButton.setFocusPainted(false);
+        styleButton(logoutButton, panelColor, textColor);
 
         logoutButton.addActionListener(e -> {
             new WelcomeScreen(marketplaceData);
@@ -129,17 +140,35 @@ public class SellerDashboard extends JFrame {
         footerPanel.add(generateButton);
         footerPanel.add(publishButton);
         footerPanel.add(configureButton);
+        footerPanel.add(refreshButton);
         footerPanel.add(logoutButton);
 
         add(footerPanel, BorderLayout.SOUTH);
 
+        refreshDashboard();
+
         setVisible(true);
+    }
+
+    // Common button styling
+    private void styleButton(
+            JButton button,
+            Color background,
+            Color foreground) {
+
+        button.setBackground(background);
+        button.setForeground(foreground);
+        button.setFocusPainted(false);
+        button.setFont(new Font("Arial", Font.BOLD, 12));
+        button.setCursor(
+            Cursor.getPredefinedCursor(Cursor.HAND_CURSOR)
+        );
     }
 
     // Opens seller profile configuration
     private void openProfileScreen() {
 
-        new SellerProfileScreen(seller);
+        new SellerProfileScreen(seller, marketplaceData);
 
         setEnabled(false);
 
@@ -219,6 +248,9 @@ public class SellerDashboard extends JFrame {
         try {
 
             double generated = seller.generateDailyEnergy();
+
+            marketplaceData.saveUsers();
+
             double available = seller.getAvailableUnits();
 
             refreshDashboard();
@@ -316,6 +348,8 @@ public class SellerDashboard extends JFrame {
                     seller, units
                 );
 
+            marketplaceData.saveUsers();
+
             refreshDashboard();
 
             JOptionPane.showMessageDialog(
@@ -353,17 +387,32 @@ public class SellerDashboard extends JFrame {
         }
     }
 
-    // Refreshes dashboard information
+    // Refreshes the complete dashboard
     private void refreshDashboard() {
 
         mainPanel.removeAll();
 
         JLabel overviewLabel = new JLabel("Energy Overview");
-        overviewLabel.setFont(new Font("Arial", Font.BOLD, 21));
+
+        overviewLabel.setFont(
+            new Font("Arial", Font.BOLD, 21)
+        );
+
         overviewLabel.setForeground(textColor);
 
+        mainPanel.add(overviewLabel, BorderLayout.NORTH);
+
+        JPanel contentPanel = new JPanel();
+
+        contentPanel.setBackground(backgroundColor);
+
+        contentPanel.setLayout(
+            new BoxLayout(contentPanel, BoxLayout.Y_AXIS)
+        );
+
+        // ENERGY CARDS
         JPanel cardsPanel = new JPanel(
-            new GridLayout(1, 3, 15, 15)
+            new GridLayout(1, 3, 15, 0)
         );
 
         cardsPanel.setBackground(backgroundColor);
@@ -385,18 +434,254 @@ public class SellerDashboard extends JFrame {
             )
         ));
 
+        cardsPanel.setPreferredSize(
+            new Dimension(1100, 115)
+        );
+
+        cardsPanel.setMinimumSize(
+            new Dimension(900, 115)
+        );
+
+        cardsPanel.setMaximumSize(
+            new Dimension(Integer.MAX_VALUE, 115)
+        );
+
+        cardsPanel.setAlignmentX(Component.LEFT_ALIGNMENT);
+
+        // TABS
+        JTabbedPane tabbedPane = new JTabbedPane();
+
+        tabbedPane.setFont(
+            new Font("Arial", Font.BOLD, 14)
+        );
+
+        tabbedPane.setBackground(panelColor);
+        tabbedPane.setForeground(textColor);
+
+        tabbedPane.addTab(
+            "My Profile & Offers",
+            createOverviewPanel()
+        );
+
+        tabbedPane.addTab(
+            "Sales History",
+            createSalesHistoryPanel()
+        );
+
+        tabbedPane.setPreferredSize(
+            new Dimension(1100, 450)
+        );
+
+        tabbedPane.setMinimumSize(
+            new Dimension(900, 350)
+        );
+
+        tabbedPane.setAlignmentX(Component.LEFT_ALIGNMENT);
+
+        contentPanel.add(cardsPanel);
+        contentPanel.add(Box.createVerticalStrut(15));
+        contentPanel.add(tabbedPane);
+
+        mainPanel.add(contentPanel, BorderLayout.CENTER);
+
+        mainPanel.revalidate();
+        mainPanel.repaint();
+    }
+
+    // Creates the profile and offers overview
+    private JPanel createOverviewPanel() {
+
+        JPanel overviewPanel = new JPanel(
+            new GridLayout(1, 2, 15, 0)
+        );
+
+        overviewPanel.setBackground(backgroundColor);
+
+        overviewPanel.setBorder(
+            BorderFactory.createEmptyBorder(15, 5, 15, 5)
+        );
+
+        overviewPanel.add(createProfilePanel());
+        overviewPanel.add(createOffersPanel());
+
+        return overviewPanel;
+    }
+
+    // Creates seller sales history
+    private JPanel createSalesHistoryPanel() {
+
+        JPanel historyPanel = new JPanel(
+            new BorderLayout(10, 10)
+        );
+
+        historyPanel.setBackground(panelColor);
+
+        historyPanel.setBorder(
+            BorderFactory.createEmptyBorder(15, 15, 15, 15)
+        );
+
+        JLabel titleLabel = new JLabel(
+            "Your Completed Sales"
+        );
+
+        titleLabel.setFont(
+            new Font("Arial", Font.BOLD, 19)
+        );
+
+        titleLabel.setForeground(greenColor);
+
+        historyPanel.add(titleLabel, BorderLayout.NORTH);
+
+        String[] columns = {
+            "Transaction ID",
+            "Offer ID",
+            "Buyer",
+            "Units Sold",
+            "Price / Unit",
+            "Total Earnings",
+            "Transaction Date"
+        };
+
+        DefaultTableModel model = new DefaultTableModel(
+            columns, 0
+        ) {
+            @Override
+            public boolean isCellEditable(int row, int column) {
+                return false;
+            }
+        };
+
+        int transactionCount =
+            marketplaceData.getTradingService()
+                .getTransactionCount();
+
+        int sellerTransactionCount = 0;
+
+        double totalSales = 0;
+
+        DateTimeFormatter dateFormatter =
+            DateTimeFormatter.ofPattern("dd MMM yyyy, hh:mm a");
+
+        for (int i = 0; i < transactionCount; i++) {
+
+            Transaction transaction =
+                marketplaceData.getTradingService()
+                    .getTransaction(i);
+
+            if (transaction.getSeller().getUserId()
+                    .equalsIgnoreCase(seller.getUserId())) {
+
+                sellerTransactionCount++;
+
+                totalSales += transaction.getTotalAmount();
+
+                model.addRow(new Object[] {
+                    transaction.getTransactionId(),
+                    transaction.getOfferId(),
+                    transaction.getBuyer().getFullName(),
+                    String.format(
+                        "%.2f", transaction.getPurchasedUnits()
+                    ),
+                    "Rs. " + String.format(
+                        "%.2f", transaction.getPricePerUnit()
+                    ),
+                    "Rs. " + String.format(
+                        "%.2f", transaction.getTotalAmount()
+                    ),
+                    transaction.getTransactionDate()
+                        .format(dateFormatter)
+                });
+            }
+        }
+
+        JTable historyTable = new JTable(model);
+
+        styleTable(historyTable);
+
+        historyTable.setAutoResizeMode(
+            JTable.AUTO_RESIZE_OFF
+        );
+
+        int[] columnWidths = {
+            125, 100, 160, 115, 125, 145, 210
+        };
+
+        for (int i = 0; i < columnWidths.length; i++) {
+
+            historyTable.getColumnModel()
+                .getColumn(i)
+                .setPreferredWidth(columnWidths[i]);
+        }
+
+        JLabel summaryLabel = new JLabel(
+            "Total Sales: " + sellerTransactionCount
+            + "     |     Earnings from Recorded Transactions: Rs. "
+            + String.format("%.2f", totalSales)
+        );
+
+        summaryLabel.setForeground(mutedColor);
+
+        summaryLabel.setFont(
+            new Font("Arial", Font.BOLD, 13)
+        );
+
+        historyPanel.add(summaryLabel, BorderLayout.SOUTH);
+
+        if (sellerTransactionCount == 0) {
+
+            JLabel emptyLabel = new JLabel(
+                "You haven't completed any sales yet."
+            );
+
+            emptyLabel.setForeground(mutedColor);
+
+            emptyLabel.setHorizontalAlignment(
+                SwingConstants.CENTER
+            );
+
+            historyPanel.add(
+                emptyLabel, BorderLayout.CENTER
+            );
+
+        } else {
+
+            JScrollPane scrollPane = new JScrollPane(
+                historyTable,
+                JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED,
+                JScrollPane.HORIZONTAL_SCROLLBAR_AS_NEEDED
+            );
+
+            scrollPane.getViewport().setBackground(panelColor);
+
+            historyPanel.add(
+                scrollPane, BorderLayout.CENTER
+            );
+        }
+
+        return historyPanel;
+    }
+
+    // Creates seller information panel
+    private JPanel createProfilePanel() {
+
         JPanel profilePanel = new JPanel(
-            new GridLayout(4, 1, 5, 10)
+            new GridLayout(4, 1, 5, 5)
         );
 
         profilePanel.setBackground(panelColor);
 
         profilePanel.setBorder(
-            BorderFactory.createEmptyBorder(20, 25, 20, 25)
+            BorderFactory.createEmptyBorder(20, 20, 20, 20)
         );
 
-        JLabel profileTitle = new JLabel("Seller Information");
-        profileTitle.setFont(new Font("Arial", Font.BOLD, 18));
+        JLabel profileTitle = new JLabel(
+            "Seller Information"
+        );
+
+        profileTitle.setFont(
+            new Font("Arial", Font.BOLD, 18)
+        );
+
         profileTitle.setForeground(greenColor);
 
         JLabel sellerTypeLabel = new JLabel(
@@ -420,47 +705,192 @@ public class SellerDashboard extends JFrame {
         profilePanel.add(energySourceLabel);
         profilePanel.add(emailLabel);
 
-        mainPanel.add(overviewLabel, BorderLayout.NORTH);
-        mainPanel.add(cardsPanel, BorderLayout.CENTER);
-        mainPanel.add(profilePanel, BorderLayout.SOUTH);
-
-        mainPanel.revalidate();
-        mainPanel.repaint();
+        return profilePanel;
     }
 
+    // Creates the seller's published offers panel
+    private JPanel createOffersPanel() {
+
+        JPanel offersPanel = new JPanel(
+            new BorderLayout(5, 8)
+        );
+
+        offersPanel.setBackground(panelColor);
+
+        offersPanel.setBorder(
+            BorderFactory.createEmptyBorder(15, 15, 15, 15)
+        );
+
+        JLabel titleLabel = new JLabel(
+            "My Published Offers"
+        );
+
+        titleLabel.setFont(
+            new Font("Arial", Font.BOLD, 18)
+        );
+
+        titleLabel.setForeground(greenColor);
+
+        offersPanel.add(titleLabel, BorderLayout.NORTH);
+
+        String[] columns = {
+            "Offer ID",
+            "Units",
+            "Remaining",
+            "Price / Unit",
+            "Status"
+        };
+
+        DefaultTableModel model = new DefaultTableModel(
+            columns, 0
+        ) {
+            @Override
+            public boolean isCellEditable(int row, int column) {
+                return false;
+            }
+        };
+
+        int offerCount =
+            marketplaceData.getTradingService().getOfferCount();
+
+        for (int i = 0; i < offerCount; i++) {
+
+            EnergyOffer offer =
+                marketplaceData.getTradingService().getOffer(i);
+
+            if (offer.getSeller().getUserId().equals(
+                    seller.getUserId())) {
+
+                String status = offer.isActive()
+                    ? "Active" : "Closed";
+
+                model.addRow(new Object[] {
+                    offer.getOfferId(),
+                    String.format("%.2f", offer.getOfferedUnits()),
+                    String.format("%.2f", offer.getRemainingUnits()),
+                    "Rs. " + String.format(
+                        "%.2f", offer.getPricePerUnit()
+                    ),
+                    status
+                });
+            }
+        }
+
+        if (model.getRowCount() == 0) {
+
+            JLabel emptyLabel = new JLabel(
+                "No offers published yet."
+            );
+
+            emptyLabel.setForeground(mutedColor);
+
+            emptyLabel.setFont(
+                new Font("Arial", Font.PLAIN, 14)
+            );
+
+            offersPanel.add(emptyLabel, BorderLayout.CENTER);
+
+        } else {
+
+            JTable offersTable = new JTable(model);
+
+            styleTable(offersTable);
+
+            JScrollPane scrollPane =
+                new JScrollPane(offersTable);
+
+            scrollPane.getViewport().setBackground(panelColor);
+
+            offersPanel.add(
+                scrollPane, BorderLayout.CENTER
+            );
+        }
+
+        return offersPanel;
+    }
+
+    // Common table styling
+    private void styleTable(JTable table) {
+
+        table.setBackground(panelColor);
+        table.setForeground(textColor);
+        table.setGridColor(new Color(55, 65, 75));
+
+        table.setRowHeight(29);
+
+        table.setFont(
+            new Font("Arial", Font.PLAIN, 12)
+        );
+
+        table.setSelectionBackground(
+            new Color(42, 91, 140)
+        );
+
+        table.setSelectionForeground(Color.WHITE);
+        table.setFillsViewportHeight(true);
+
+        table.getTableHeader().setBackground(
+            new Color(35, 48, 57)
+        );
+
+        table.getTableHeader().setForeground(textColor);
+
+        table.getTableHeader().setFont(
+            new Font("Arial", Font.BOLD, 12)
+        );
+    }
+
+    // Creates dashboard information cards
     private JPanel createInfoCard(String title, String value) {
 
         JPanel card = new JPanel();
 
         card.setBackground(panelColor);
-        card.setLayout(new BoxLayout(card, BoxLayout.Y_AXIS));
+
+        card.setLayout(
+            new BoxLayout(card, BoxLayout.Y_AXIS)
+        );
 
         card.setBorder(
-            BorderFactory.createEmptyBorder(25, 15, 25, 15)
+            BorderFactory.createEmptyBorder(20, 15, 20, 15)
         );
 
         JLabel titleLabel = new JLabel(title);
-        titleLabel.setFont(new Font("Arial", Font.PLAIN, 14));
+
+        titleLabel.setFont(
+            new Font("Arial", Font.PLAIN, 14)
+        );
+
         titleLabel.setForeground(mutedColor);
+
         titleLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
 
         JLabel valueLabel = new JLabel(value);
-        valueLabel.setFont(new Font("Arial", Font.BOLD, 25));
+
+        valueLabel.setFont(
+            new Font("Arial", Font.BOLD, 25)
+        );
+
         valueLabel.setForeground(greenColor);
+
         valueLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
 
         card.add(Box.createVerticalGlue());
         card.add(titleLabel);
-        card.add(Box.createVerticalStrut(15));
+        card.add(Box.createVerticalStrut(12));
         card.add(valueLabel);
         card.add(Box.createVerticalGlue());
 
         return card;
     }
 
+    // Styles seller information labels
     private void styleProfileLabel(JLabel label) {
 
-        label.setFont(new Font("Arial", Font.PLAIN, 14));
+        label.setFont(
+            new Font("Arial", Font.PLAIN, 14)
+        );
+
         label.setForeground(textColor);
     }
 }

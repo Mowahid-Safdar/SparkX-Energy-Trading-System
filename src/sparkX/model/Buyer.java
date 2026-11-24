@@ -45,6 +45,36 @@ public class Buyer extends User {
         );
     }
 
+    // Constructor used when restoring a saved buyer account
+    public Buyer(String userId, String fullName, String email,
+                 String storedPassword, boolean alreadyHashed,
+                 String consumerType,
+                 double requiredUnits,
+                 double maxPricePerUnit,
+                 double totalSpent) {
+
+        super(userId, fullName, email, storedPassword, alreadyHashed);
+
+        if (consumerType == null
+                || consumerType.trim().isEmpty()
+                || !Double.isFinite(requiredUnits)
+                || requiredUnits < 0
+                || !Double.isFinite(maxPricePerUnit)
+                || maxPricePerUnit < 0
+                || !Double.isFinite(totalSpent)
+                || totalSpent < 0) {
+
+            throw new IllegalArgumentException(
+                "Invalid saved buyer information."
+            );
+        }
+
+        this.consumerType = consumerType;
+        this.requiredUnits = requiredUnits;
+        this.maxPricePerUnit = maxPricePerUnit;
+        this.totalSpent = totalSpent;
+    }
+
     @Override
     public String getRole() {
         return "Buyer";
@@ -76,7 +106,6 @@ public class Buyer extends User {
     // Checks whether buyer profile has been configured
     public boolean isProfileConfigured() {
         return !consumerType.equals("Not configured")
-            && requiredUnits > 0
             && maxPricePerUnit > 0;
     }
 

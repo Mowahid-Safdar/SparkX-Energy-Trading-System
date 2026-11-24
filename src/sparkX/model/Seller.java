@@ -70,6 +70,80 @@ public class Seller extends User {
         );
     }
 
+    // Constructor used when restoring a saved seller account
+    public Seller(String userId, String fullName, String email,
+                  String storedPassword, boolean alreadyHashed,
+                  String sellerType, String energySource,
+                  double generationCapacityKw,
+                  double operatingHours,
+                  double performanceRatio,
+                  double ownConsumptionUnits,
+                  double generatedUnits,
+                  double availableUnits,
+                  double reservedUnits,
+                  double pricePerUnit,
+                  double totalEarnings) {
+
+        super(userId, fullName, email, storedPassword, alreadyHashed);
+
+        if (sellerType == null || sellerType.trim().isEmpty()
+                || energySource == null || energySource.trim().isEmpty()
+                || !Double.isFinite(generationCapacityKw)
+                || !Double.isFinite(operatingHours)
+                || !Double.isFinite(performanceRatio)
+                || !Double.isFinite(ownConsumptionUnits)
+                || !Double.isFinite(generatedUnits)
+                || !Double.isFinite(availableUnits)
+                || !Double.isFinite(reservedUnits)
+                || !Double.isFinite(pricePerUnit)
+                || !Double.isFinite(totalEarnings)
+                || generationCapacityKw < 0
+                || operatingHours < 0
+                || operatingHours > 24
+                || performanceRatio < 0
+                || performanceRatio > 1
+                || ownConsumptionUnits < 0
+                || generatedUnits < 0
+                || availableUnits < 0
+                || reservedUnits < 0
+                || pricePerUnit < 0
+                || totalEarnings < 0) {
+
+            throw new IllegalArgumentException(
+                "Invalid saved seller information."
+            );
+        }
+
+        boolean configured = !sellerType.equals("Not configured")
+                && !energySource.equals("Not configured");
+
+        if (configured
+                && (generationCapacityKw <= 0
+                || operatingHours <= 0
+                || performanceRatio <= 0
+                || pricePerUnit <= 0)) {
+
+            throw new IllegalArgumentException(
+                "Invalid saved seller profile."
+            );
+        }
+
+        this.sellerType = sellerType;
+        this.energySource = energySource;
+
+        this.generationCapacityKw = generationCapacityKw;
+        this.operatingHours = operatingHours;
+        this.performanceRatio = performanceRatio;
+        this.ownConsumptionUnits = ownConsumptionUnits;
+
+        this.generatedUnits = generatedUnits;
+        this.availableUnits = availableUnits;
+        this.reservedUnits = reservedUnits;
+
+        this.pricePerUnit = pricePerUnit;
+        this.totalEarnings = totalEarnings;
+    }
+
     @Override
     public String getRole() {
         return "Seller";
@@ -92,16 +166,11 @@ public class Seller extends User {
                 || performanceRatio <= 0 || performanceRatio > 1
                 || ownConsumptionUnits < 0
                 || pricePerUnit <= 0
-                || Double.isNaN(generationCapacityKw)
-                || Double.isNaN(operatingHours)
-                || Double.isNaN(performanceRatio)
-                || Double.isNaN(ownConsumptionUnits)
-                || Double.isNaN(pricePerUnit)
-                || Double.isInfinite(generationCapacityKw)
-                || Double.isInfinite(operatingHours)
-                || Double.isInfinite(performanceRatio)
-                || Double.isInfinite(ownConsumptionUnits)
-                || Double.isInfinite(pricePerUnit)) {
+                || !Double.isFinite(generationCapacityKw)
+                || !Double.isFinite(operatingHours)
+                || !Double.isFinite(performanceRatio)
+                || !Double.isFinite(ownConsumptionUnits)
+                || !Double.isFinite(pricePerUnit)) {
 
             throw new IllegalArgumentException(
                 "Invalid seller profile information."
@@ -110,10 +179,12 @@ public class Seller extends User {
 
         this.sellerType = sellerType;
         this.energySource = energySource;
+
         this.generationCapacityKw = generationCapacityKw;
         this.operatingHours = operatingHours;
         this.performanceRatio = performanceRatio;
         this.ownConsumptionUnits = ownConsumptionUnits;
+
         this.pricePerUnit = pricePerUnit;
     }
 
@@ -122,6 +193,7 @@ public class Seller extends User {
 
         // Prevent overwriting energy already available or reserved.
         if (availableUnits > 0 || reservedUnits > 0) {
+
             throw new IllegalStateException(
                 "Existing energy must be traded or released "
                 + "before generating again."
@@ -141,9 +213,10 @@ public class Seller extends User {
 
     public boolean reserveUnits(double units) {
 
-        if (units <= 0 || units > availableUnits
-                || Double.isNaN(units)
-                || Double.isInfinite(units)) {
+        if (!Double.isFinite(units)
+                || units <= 0
+                || units > availableUnits) {
+
             return false;
         }
 
@@ -155,8 +228,12 @@ public class Seller extends User {
 
     public boolean completeSale(double units, double salePrice) {
 
-        if (units <= 0 || units > reservedUnits
+        if (!Double.isFinite(units)
+                || !Double.isFinite(salePrice)
+                || units <= 0
+                || units > reservedUnits
                 || salePrice <= 0) {
+
             return false;
         }
 
@@ -168,7 +245,10 @@ public class Seller extends User {
 
     public void releaseReservedUnits(double units) {
 
-        if (units <= 0 || units > reservedUnits) {
+        if (!Double.isFinite(units)
+                || units <= 0
+                || units > reservedUnits) {
+
             throw new IllegalArgumentException(
                 "Invalid reservation quantity."
             );
@@ -234,8 +314,7 @@ public class Seller extends User {
     public void setPricePerUnit(double pricePerUnit) {
 
         if (pricePerUnit <= 0
-                || Double.isNaN(pricePerUnit)
-                || Double.isInfinite(pricePerUnit)) {
+                || !Double.isFinite(pricePerUnit)) {
 
             throw new IllegalArgumentException(
                 "Price must be greater than zero."

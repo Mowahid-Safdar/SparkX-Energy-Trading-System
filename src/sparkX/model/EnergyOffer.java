@@ -7,19 +7,20 @@ public class EnergyOffer {
 
     private String offerId;
     private Seller seller;
-
     private double offeredUnits;
     private double remainingUnits;
     private double pricePerUnit;
-
     private LocalDateTime createdAt;
     private boolean active;
 
+    // Normal constructor: creates a new marketplace offer
     public EnergyOffer(String offerId, Seller seller,
                        double offeredUnits, double pricePerUnit) {
 
         if (offerId == null || offerId.trim().isEmpty()
                 || seller == null
+                || !Double.isFinite(offeredUnits)
+                || !Double.isFinite(pricePerUnit)
                 || offeredUnits <= 0
                 || pricePerUnit <= 0) {
 
@@ -36,15 +37,48 @@ public class EnergyOffer {
 
         this.offerId = offerId;
         this.seller = seller;
-
         this.offeredUnits = offeredUnits;
         this.remainingUnits = offeredUnits;
         this.pricePerUnit = pricePerUnit;
-
         this.createdAt = LocalDateTime.now();
         this.active = true;
     }
 
+    // Restoration constructor: restores an existing offer
+    public EnergyOffer(String offerId, Seller seller,
+                       double offeredUnits, double remainingUnits,
+                       double pricePerUnit, LocalDateTime createdAt,
+                       boolean active, boolean restoring) {
+
+        if (!restoring
+                || offerId == null
+                || offerId.trim().isEmpty()
+                || seller == null
+                || !Double.isFinite(offeredUnits)
+                || !Double.isFinite(remainingUnits)
+                || !Double.isFinite(pricePerUnit)
+                || offeredUnits <= 0
+                || remainingUnits < 0
+                || remainingUnits > offeredUnits
+                || pricePerUnit <= 0
+                || createdAt == null
+                || (active && remainingUnits <= 0)) {
+
+            throw new IllegalArgumentException(
+                "Invalid saved energy offer."
+            );
+        }
+
+        this.offerId = offerId;
+        this.seller = seller;
+        this.offeredUnits = offeredUnits;
+        this.remainingUnits = remainingUnits;
+        this.pricePerUnit = pricePerUnit;
+        this.createdAt = createdAt;
+        this.active = active;
+    }
+
+    // Records a sale
     public boolean recordSale(double units) {
 
         if (!active || units <= 0 || units > remainingUnits) {
@@ -64,6 +98,7 @@ public class EnergyOffer {
         return true;
     }
 
+    // Cancels an offer
     public void cancelOffer() {
 
         if (!active) {

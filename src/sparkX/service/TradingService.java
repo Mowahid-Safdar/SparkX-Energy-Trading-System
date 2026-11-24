@@ -105,7 +105,10 @@ public class TradingService {
             );
         }
 
-        if (units <= 0 || units > offer.getRemainingUnits()) {
+        if (!Double.isFinite(units)
+                || units <= 0
+                || units > offer.getRemainingUnits()) {
+
             throw new IllegalArgumentException(
                 "Invalid purchase quantity."
             );
@@ -129,21 +132,23 @@ public class TradingService {
             );
         }
 
-        // Record the sale and update seller's earnings.
+        // Record sale and update seller earnings.
         if (!offer.recordSale(units)) {
             throw new IllegalStateException(
                 "Sale could not be completed."
             );
         }
 
-        // Update buyer's demand and spending.
-        if (!buyer.recordPurchase(units, offer.getPricePerUnit())) {
+        // Update buyer demand and spending.
+        if (!buyer.recordPurchase(
+                units, offer.getPricePerUnit())) {
+
             throw new IllegalStateException(
                 "Buyer purchase could not be recorded."
             );
         }
 
-        // Create and store transaction.
+        // Create transaction.
         String transactionId = "TXN-" + nextTransactionId;
 
         Transaction transaction = new Transaction(
@@ -197,6 +202,158 @@ public class TradingService {
         offer.cancelOffer();
     }
 
+    // Restore an offer from saved data.
+    public void restoreOffer(EnergyOffer offer) {
+
+        if (offer == null) {
+            throw new IllegalArgumentException(
+                "Cannot restore an empty offer."
+            );
+        }
+
+        if (offerCount >= offers.length) {
+            throw new IllegalStateException(
+                "Marketplace offer capacity reached."
+            );
+        }
+
+        String offerId = offer.getOfferId();
+
+        // Prevent duplicate offer IDs.
+        for (int i = 0; i < offerCount; i++) {
+
+            if (offers[i].getOfferId().equals(offerId)) {
+                throw new IllegalArgumentException(
+                    "Duplicate restored offer ID."
+                );
+            }
+        }
+
+        int restoredId = 0;
+
+        if (offerId.startsWith("OFF-")) {
+
+            try {
+                restoredId = Integer.parseInt(
+                    offerId.substring(4)
+                );
+
+            } catch (NumberFormatException e) {
+                throw new IllegalArgumentException(
+                    "Invalid restored offer ID."
+                );
+            }
+
+            if (restoredId <= 0) {
+                throw new IllegalArgumentException(
+                    "Invalid restored offer ID."
+                );
+            }
+        }
+
+        offers[offerCount] = offer;
+        offerCount++;
+
+        if (restoredId >= nextOfferId) {
+            nextOfferId = restoredId + 1;
+        }
+    }
+
+    // Restore a transaction from saved data.
+    public void restoreTransaction(Transaction transaction) {
+
+        if (transaction == null) {
+            throw new IllegalArgumentException(
+                "Cannot restore an empty transaction."
+            );
+        }
+
+        if (transactionCount >= transactions.length) {
+            throw new IllegalStateException(
+                "Transaction history capacity reached."
+            );
+        }
+
+        String transactionId =
+            transaction.getTransactionId();
+
+        // Prevent duplicate transaction IDs.
+        for (int i = 0; i < transactionCount; i++) {
+
+            if (transactions[i].getTransactionId()
+                    .equals(transactionId)) {
+
+                throw new IllegalArgumentException(
+                    "Duplicate transaction ID."
+                );
+            }
+        }
+
+        int restoredId = 0;
+
+        if (transactionId.startsWith("TXN-")) {
+
+            try {
+                restoredId = Integer.parseInt(
+                    transactionId.substring(4)
+                );
+
+            } catch (NumberFormatException e) {
+                throw new IllegalArgumentException(
+                    "Invalid restored transaction ID."
+                );
+            }
+
+            if (restoredId <= 0) {
+                throw new IllegalArgumentException(
+                    "Invalid restored transaction ID."
+                );
+            }
+        }
+
+        transactions[transactionCount] = transaction;
+        transactionCount++;
+
+        // Keep transaction IDs unique after restarting.
+        if (restoredId >= nextTransactionId) {
+            nextTransactionId = restoredId + 1;
+        }
+    }
+
+    // Return the number of published offers.
+    public int getOfferCount() {
+        return offerCount;
+    }
+
+    // Return the number of completed transactions.
+    public int getTransactionCount() {
+        return transactionCount;
+    }
+
+    // Return an offer by array position.
+    public EnergyOffer getOffer(int index) {
+
+        if (index < 0 || index >= offerCount) {
+            throw new IndexOutOfBoundsException(
+                "Invalid offer index."
+            );
+        }
+
+        return offers[index];
+    }
+
+    // Return a transaction by array position.
+    public Transaction getTransaction(int index) {
+
+        if (index < 0 || index >= transactionCount) {
+            throw new IndexOutOfBoundsException(
+                "Invalid transaction index."
+            );
+        }
+
+        return transactions[index];
+    }
+
     // Display all marketplace offers.
     public void displayAllOffers() {
 
@@ -211,11 +368,13 @@ public class TradingService {
             );
 
             System.out.println(
-                "Remaining Units: " + offers[i].getRemainingUnits()
+                "Remaining Units: "
+                + offers[i].getRemainingUnits()
             );
 
             System.out.println(
-                "Price Per Unit: Rs. " + offers[i].getPricePerUnit()
+                "Price Per Unit: Rs. "
+                + offers[i].getPricePerUnit()
             );
 
             System.out.println("-------------------------");
@@ -238,11 +397,13 @@ public class TradingService {
                 );
 
                 System.out.println(
-                    "Available Units: " + offers[i].getRemainingUnits()
+                    "Available Units: "
+                    + offers[i].getRemainingUnits()
                 );
 
                 System.out.println(
-                    "Price Per Unit: Rs. " + offers[i].getPricePerUnit()
+                    "Price Per Unit: Rs. "
+                    + offers[i].getPricePerUnit()
                 );
 
                 System.out.println("-------------------------");
@@ -255,66 +416,38 @@ public class TradingService {
 
         for (int i = 0; i < transactionCount; i++) {
 
+            Transaction transaction = transactions[i];
+
             System.out.println(
                 "Transaction ID: "
-                + transactions[i].getTransactionId()
+                + transaction.getTransactionId()
             );
 
             System.out.println(
                 "Buyer: "
-                + transactions[i].getBuyer().getFullName()
+                + transaction.getBuyer().getFullName()
             );
 
             System.out.println(
                 "Seller: "
-                + transactions[i].getSeller().getFullName()
+                + transaction.getSeller().getFullName()
             );
 
             System.out.println(
                 "Purchased Units: "
-                + transactions[i].getPurchasedUnits()
+                + transaction.getPurchasedUnits()
             );
 
             System.out.println(
                 "Total Amount: Rs. "
-                + transactions[i].getTotalAmount()
+                + transaction.getTotalAmount()
+            );
+
+            System.out.println(
+                "Date: " + transaction.getTransactionDate()
             );
 
             System.out.println("-------------------------");
         }
-    }
-
-    // Return the number of published offers.
-    public int getOfferCount() {
-        return offerCount;
-    }
-
-    // Return the number of completed transactions.
-    public int getTransactionCount() {
-        return transactionCount;
-    }
-
-    // Return an offer using its array position.
-    public EnergyOffer getOffer(int index) {
-
-        if (index < 0 || index >= offerCount) {
-            throw new IndexOutOfBoundsException(
-                "Invalid offer index."
-            );
-        }
-
-        return offers[index];
-    }
-
-    // Return a transaction using its array position.
-    public Transaction getTransaction(int index) {
-
-        if (index < 0 || index >= transactionCount) {
-            throw new IndexOutOfBoundsException(
-                "Invalid transaction index."
-            );
-        }
-
-        return transactions[index];
     }
 }
