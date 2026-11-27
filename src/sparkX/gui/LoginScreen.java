@@ -16,12 +16,14 @@ public class LoginScreen extends JFrame {
     private JTextField emailField;
     private JPasswordField passwordField;
 
-    private Color backgroundColor = new Color(16, 20, 24);
-    private Color panelColor = new Color(27, 35, 43);
-    private Color greenColor = new Color(0, 199, 129);
-    private Color blueColor = new Color(49, 139, 255);
-    private Color textColor = new Color(241, 245, 249);
-    private Color mutedColor = new Color(154, 168, 181);
+    private final Color backgroundColor = new Color(16, 20, 24);
+    private final Color panelColor = new Color(27, 35, 43);
+    private final Color greenColor = new Color(0, 199, 129);
+    private final Color blueColor = new Color(49, 139, 255);
+    private final Color textColor = new Color(241, 245, 249);
+    private final Color mutedColor = new Color(154, 168, 181);
+
+    private final int contentWidth = 330;
 
     public LoginScreen(MarketplaceData marketplaceData) {
 
@@ -39,7 +41,6 @@ public class LoginScreen extends JFrame {
         mainPanel.setBackground(backgroundColor);
 
         JPanel formPanel = new JPanel();
-
         formPanel.setBackground(panelColor);
         formPanel.setPreferredSize(new Dimension(400, 440));
 
@@ -51,96 +52,75 @@ public class LoginScreen extends JFrame {
             new BoxLayout(formPanel, BoxLayout.Y_AXIS)
         );
 
+        // TITLE
         JLabel titleLabel = new JLabel("Welcome Back");
-
-        titleLabel.setFont(
-            new Font("Arial", Font.BOLD, 27)
-        );
-
+        titleLabel.setFont(new Font("Arial", Font.BOLD, 27));
         titleLabel.setForeground(textColor);
+        titleLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
 
-        titleLabel.setAlignmentX(
-            Component.CENTER_ALIGNMENT
-        );
-
+        // SUBTITLE
         JLabel subtitleLabel = new JLabel(
             "Login to your SparkX account"
         );
 
-        subtitleLabel.setFont(
-            new Font("Arial", Font.PLAIN, 13)
-        );
-
+        subtitleLabel.setFont(new Font("Arial", Font.PLAIN, 13));
         subtitleLabel.setForeground(mutedColor);
-
-        subtitleLabel.setAlignmentX(
-            Component.CENTER_ALIGNMENT
-        );
+        subtitleLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
 
         formPanel.add(titleLabel);
         formPanel.add(Box.createVerticalStrut(8));
         formPanel.add(subtitleLabel);
         formPanel.add(Box.createVerticalStrut(35));
 
-        // EMAIL
+        // EMAIL LABEL
         formPanel.add(createLabel("Email Address"));
+        formPanel.add(Box.createVerticalStrut(5));
 
+        // EMAIL FIELD
         emailField = createTextField();
-
         formPanel.add(emailField);
+
         formPanel.add(Box.createVerticalStrut(20));
 
-        // PASSWORD
+        // PASSWORD LABEL
         formPanel.add(createLabel("Password"));
+        formPanel.add(Box.createVerticalStrut(5));
 
+        // PASSWORD FIELD
         passwordField = new JPasswordField();
-
         styleTextField(passwordField);
-
         formPanel.add(passwordField);
+
         formPanel.add(Box.createVerticalStrut(35));
 
         // LOGIN BUTTON
         JButton loginButton = new JButton("LOGIN");
 
-        loginButton.setFont(
-            new Font("Arial", Font.BOLD, 14)
-        );
-
+        loginButton.setFont(new Font("Arial", Font.BOLD, 14));
         loginButton.setBackground(blueColor);
         loginButton.setForeground(Color.WHITE);
         loginButton.setFocusPainted(false);
+        loginButton.setAlignmentX(Component.CENTER_ALIGNMENT);
 
-        loginButton.setAlignmentX(
-            Component.CENTER_ALIGNMENT
-        );
+        loginButton.setPreferredSize(new Dimension(contentWidth, 45));
+        loginButton.setMaximumSize(new Dimension(contentWidth, 45));
+        loginButton.setMinimumSize(new Dimension(contentWidth, 45));
 
-        loginButton.setMaximumSize(
-            new Dimension(Integer.MAX_VALUE, 45)
-        );
-
-        loginButton.addActionListener(
-            e -> loginUser()
-        );
+        loginButton.addActionListener(e -> loginUser());
 
         formPanel.add(loginButton);
+
         formPanel.add(Box.createVerticalStrut(15));
 
         // BACK BUTTON
         JButton backButton = new JButton("Back to Welcome");
 
-        backButton.setFont(
-            new Font("Arial", Font.PLAIN, 13)
-        );
-
+        backButton.setFont(new Font("Arial", Font.PLAIN, 13));
         backButton.setForeground(greenColor);
         backButton.setBackground(panelColor);
         backButton.setBorderPainted(false);
         backButton.setFocusPainted(false);
-
-        backButton.setAlignmentX(
-            Component.CENTER_ALIGNMENT
-        );
+        backButton.setAlignmentX(Component.CENTER_ALIGNMENT);
 
         backButton.addActionListener(e -> {
             new WelcomeScreen(marketplaceData);
@@ -156,25 +136,25 @@ public class LoginScreen extends JFrame {
         setVisible(true);
     }
 
-    // Creates labels
+    // Creates consistently sized labels
     private JLabel createLabel(String text) {
 
         JLabel label = new JLabel(text);
 
-        label.setFont(
-            new Font("Arial", Font.BOLD, 13)
-        );
-
+        label.setFont(new Font("Arial", Font.BOLD, 13));
         label.setForeground(textColor);
+        label.setHorizontalAlignment(SwingConstants.LEFT);
 
-        label.setAlignmentX(
-            Component.LEFT_ALIGNMENT
-        );
+        label.setPreferredSize(new Dimension(contentWidth, 20));
+        label.setMaximumSize(new Dimension(contentWidth, 20));
+        label.setMinimumSize(new Dimension(contentWidth, 20));
+
+        label.setAlignmentX(Component.CENTER_ALIGNMENT);
 
         return label;
     }
 
-    // Creates text fields
+    // Creates email field
     private JTextField createTextField() {
 
         JTextField field = new JTextField();
@@ -184,12 +164,10 @@ public class LoginScreen extends JFrame {
         return field;
     }
 
-    // Applies text field styling
+    // Applies consistent styling and dimensions
     private void styleTextField(JTextField field) {
 
-        field.setFont(
-            new Font("Arial", Font.PLAIN, 14)
-        );
+        field.setFont(new Font("Arial", Font.PLAIN, 14));
 
         field.setBackground(backgroundColor);
         field.setForeground(textColor);
@@ -202,13 +180,13 @@ public class LoginScreen extends JFrame {
             )
         );
 
-        field.setMaximumSize(
-            new Dimension(Integer.MAX_VALUE, 42)
-        );
+        Dimension fieldSize = new Dimension(contentWidth, 42);
 
-        field.setAlignmentX(
-            Component.LEFT_ALIGNMENT
-        );
+        field.setPreferredSize(fieldSize);
+        field.setMaximumSize(fieldSize);
+        field.setMinimumSize(fieldSize);
+
+        field.setAlignmentX(Component.CENTER_ALIGNMENT);
     }
 
     // Handles login
@@ -256,10 +234,7 @@ public class LoginScreen extends JFrame {
 
             Seller seller = (Seller) user;
 
-            new SellerDashboard(
-                marketplaceData,
-                seller
-            );
+            new SellerDashboard(marketplaceData, seller);
 
             dispose();
 
@@ -267,10 +242,7 @@ public class LoginScreen extends JFrame {
 
             Buyer buyer = (Buyer) user;
 
-            new BuyerDashboard(
-                marketplaceData,
-                buyer
-            );
+            new BuyerDashboard(marketplaceData, buyer);
 
             dispose();
         }

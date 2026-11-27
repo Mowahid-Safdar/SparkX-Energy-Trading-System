@@ -1,8 +1,8 @@
-
 package sparkX.gui;
 
 import javax.swing.*;
 import javax.swing.table.DefaultTableModel;
+
 import java.awt.*;
 import java.time.format.DateTimeFormatter;
 
@@ -10,7 +10,7 @@ import sparkX.data.MarketplaceData;
 import sparkX.model.Seller;
 import sparkX.model.EnergyOffer;
 import sparkX.model.Transaction;
-import sparkX.ai.GeminiService;
+import sparkX.ai.GroqService;
 
 public class SellerDashboard extends JFrame {
 
@@ -497,7 +497,9 @@ public class SellerDashboard extends JFrame {
     // Creates the seller AI advisor panel
     private JPanel createSellerAdvisorPanel() {
 
-        JPanel advisorPanel = new JPanel(new BorderLayout(12, 12));
+        JPanel advisorPanel = new JPanel(
+            new BorderLayout(12, 12)
+        );
 
         advisorPanel.setBackground(panelColor);
 
@@ -516,8 +518,8 @@ public class SellerDashboard extends JFrame {
         titleLabel.setForeground(greenColor);
 
         JLabel descriptionLabel = new JLabel(
-            "<html>Get AI-powered insights about your energy production, "
-            + "pricing, marketplace offers and selling performance.</html>"
+            "Get a recommended quantity and selling price "
+            + "based on your energy and marketplace competition."
         );
 
         descriptionLabel.setFont(
@@ -540,70 +542,115 @@ public class SellerDashboard extends JFrame {
 
         advisorPanel.add(topPanel, BorderLayout.NORTH);
 
-        JTextArea outputArea = new JTextArea();
+        JTextArea recommendationOutput = new JTextArea();
 
-        outputArea.setEditable(false);
-        outputArea.setLineWrap(true);
-        outputArea.setWrapStyleWord(true);
+        recommendationOutput.setEditable(false);
+        recommendationOutput.setLineWrap(true);
+        recommendationOutput.setWrapStyleWord(true);
 
-        outputArea.setFont(
-            new Font("Arial", Font.PLAIN, 14)
+        recommendationOutput.setFont(
+            new Font("Arial", Font.PLAIN, 15)
         );
 
-        outputArea.setForeground(textColor);
-        outputArea.setBackground(backgroundColor);
+        recommendationOutput.setForeground(textColor);
+        recommendationOutput.setBackground(backgroundColor);
 
-        outputArea.setText(
-            "Your personalized seller analysis will appear here.\n\n"
-            + "Click the button below to analyze your seller "
-            + "profile and marketplace performance."
+        recommendationOutput.setBorder(
+            BorderFactory.createEmptyBorder(18, 18, 18, 18)
         );
 
-        outputArea.setBorder(
-            BorderFactory.createEmptyBorder(15, 15, 15, 15)
+        recommendationOutput.setText(
+            "Click the button below to get a recommended "
+            + "energy offer based on your available units "
+            + "and current marketplace prices."
         );
 
-        JScrollPane scrollPane = new JScrollPane(outputArea);
+        JScrollPane outputScrollPane =
+            new JScrollPane(recommendationOutput);
 
-        scrollPane.setBorder(
+        outputScrollPane.setBorder(
             BorderFactory.createLineBorder(
                 new Color(55, 65, 75)
             )
         );
 
-        scrollPane.getViewport().setBackground(backgroundColor);
+        outputScrollPane.getViewport().setBackground(backgroundColor);
 
-        advisorPanel.add(scrollPane, BorderLayout.CENTER);
+        advisorPanel.add(
+            outputScrollPane, BorderLayout.CENTER
+        );
 
-        JButton generateAdviceButton =
-            new JButton("Generate Seller Advice");
+        JLabel statusLabel = new JLabel(
+            "Your AI recommendation will appear here."
+        );
 
-        styleButton(
-            generateAdviceButton,
-            greenColor,
-            Color.BLACK
+        statusLabel.setForeground(mutedColor);
+
+        statusLabel.setFont(
+            new Font("Arial", Font.PLAIN, 12)
+        );
+
+        JButton generateAdviceButton = new JButton(
+            "Get Offer Recommendation"
         );
 
         generateAdviceButton.setFont(
             new Font("Arial", Font.BOLD, 14)
         );
 
+        generateAdviceButton.setForeground(Color.BLACK);
+        generateAdviceButton.setBackground(greenColor);
+        generateAdviceButton.setFocusPainted(false);
+        generateAdviceButton.setBorderPainted(false);
+
+        generateAdviceButton.setCursor(
+            Cursor.getPredefinedCursor(Cursor.HAND_CURSOR)
+        );
+
         generateAdviceButton.setPreferredSize(
-            new Dimension(220, 42)
+            new Dimension(230, 44)
         );
 
         generateAdviceButton.addActionListener(e -> {
 
+            if (!seller.isProfileConfigured()) {
+
+                statusLabel.setText(
+                    "Please configure your seller profile first."
+                );
+
+                return;
+            }
+
+            final double availableUnits =
+                seller.getAvailableUnits();
+
+            if (availableUnits <= 0) {
+
+                recommendationOutput.setText(
+                    "No energy is currently available to publish. "
+                    + "Generate daily energy first."
+                );
+
+                statusLabel.setText(
+                    "No available energy."
+                );
+
+                return;
+            }
+
             String prompt = buildSellerAdvisorPrompt();
 
-            outputArea.setText(
-                "Analyzing your seller profile and marketplace data...\n\n"
-                + "Please wait while the AI advisor prepares "
-                + "your recommendations."
+            statusLabel.setText(
+                "Analysing your energy and marketplace offers..."
+            );
+
+            recommendationOutput.setText(
+                "Analysing your available energy and competing offers..."
             );
 
             generateAdviceButton.setEnabled(false);
-            generateAdviceButton.setText("Analyzing...");
+            generateAdviceButton.setText("Analysing...");
 
             SwingWorker<String, Void> worker =
                 new SwingWorker<String, Void>() {
@@ -611,7 +658,7 @@ public class SellerDashboard extends JFrame {
                 @Override
                 protected String doInBackground() throws Exception {
 
-                    GeminiService advisor = new GeminiService();
+                    GroqService advisor = new GroqService();
 
                     return advisor.generateResponse(prompt);
                 }
@@ -620,14 +667,75 @@ public class SellerDashboard extends JFrame {
                 protected void done() {
 
                     generateAdviceButton.setEnabled(true);
+
                     generateAdviceButton.setText(
-                        "Generate Seller Advice"
+                        "Get Offer Recommendation"
                     );
 
                     try {
 
-                        outputArea.setText(get());
-                        outputArea.setCaretPosition(0);
+                        String response = get();
+
+                        double recommendedUnits =
+                            extractAIValue(
+                                response,
+                                "RECOMMENDED_QUANTITY"
+                            );
+
+                        double recommendedPrice =
+                            extractAIValue(
+                                response,
+                                "RECOMMENDED_PRICE"
+                            );
+
+                        // Validate the AI's recommended quantity
+
+                        if (Double.isNaN(recommendedUnits)
+                                || Double.isInfinite(recommendedUnits)
+                                || recommendedUnits <= 0
+                                || recommendedUnits > availableUnits) {
+
+                            throw new IllegalStateException(
+                                "AI returned an invalid recommended quantity."
+                            );
+                        }
+
+                        // Validate the AI's recommended price
+
+                        if (Double.isNaN(recommendedPrice)
+                                || Double.isInfinite(recommendedPrice)
+                                || recommendedPrice <= 0) {
+
+                            throw new IllegalStateException(
+                                "AI returned an invalid recommended price."
+                            );
+                        }
+
+                        // Calculate potential gross revenue in Java
+
+                        double potentialRevenue =
+                            recommendedUnits * recommendedPrice;
+
+                        // Display one concise recommendation sentence
+
+                        String recommendation =
+                            "Publish "
+                            + String.format("%.2f", recommendedUnits)
+                            + " units of "
+                            + seller.getEnergySource()
+                            + " energy at Rs. "
+                            + String.format("%.2f", recommendedPrice)
+                            + " per unit, giving you a potential gross "
+                            + "revenue of Rs. "
+                            + String.format("%.2f", potentialRevenue)
+                            + ".";
+
+                        recommendationOutput.setText(recommendation);
+                        recommendationOutput.setCaretPosition(0);
+
+                        statusLabel.setText(
+                            "Recommendation generated successfully."
+                        );
 
                     } catch (Exception ex) {
 
@@ -637,11 +745,12 @@ public class SellerDashboard extends JFrame {
                             ? cause.getMessage()
                             : ex.getMessage();
 
-                        outputArea.setText(
-                            "Unable to generate seller recommendations.\n\n"
-                            + "Please check your Gemini API connection "
-                            + "and try again.\n\n"
-                            + "Technical details: " + error
+                        recommendationOutput.setText(
+                            "Unable to generate a valid recommendation."
+                        );
+
+                        statusLabel.setText(
+                            "Please try again. " + error
                         );
                     }
                 }
@@ -650,14 +759,24 @@ public class SellerDashboard extends JFrame {
             worker.execute();
         });
 
+        JPanel bottomPanel = new JPanel(
+            new BorderLayout(10, 10)
+        );
+
+        bottomPanel.setBackground(panelColor);
+
         JPanel buttonPanel = new JPanel(
             new FlowLayout(FlowLayout.CENTER)
         );
 
         buttonPanel.setBackground(panelColor);
+
         buttonPanel.add(generateAdviceButton);
 
-        advisorPanel.add(buttonPanel, BorderLayout.SOUTH);
+        bottomPanel.add(statusLabel, BorderLayout.NORTH);
+        bottomPanel.add(buttonPanel, BorderLayout.SOUTH);
+
+        advisorPanel.add(bottomPanel, BorderLayout.SOUTH);
 
         return advisorPanel;
     }
@@ -668,13 +787,15 @@ public class SellerDashboard extends JFrame {
         StringBuilder prompt = new StringBuilder();
 
         prompt.append(
-            "You are the SparkX AI Energy Trading Advisor. "
-            + "Analyze the following seller data and provide "
-            + "practical, clear and personalized recommendations.\n\n"
+            "You are the SparkX AI Energy Trading Advisor.\n"
         );
 
-        prompt.append("SELLER INFORMATION\n");
-        prompt.append("-------------------------\n");
+        prompt.append(
+            "Recommend the best quantity and price for the seller "
+            + "to publish as a new energy offer.\n\n"
+        );
+
+        prompt.append("SELLER DATA\n");
 
         prompt.append("Seller type: ")
             .append(seller.getSellerType()).append("\n");
@@ -682,34 +803,24 @@ public class SellerDashboard extends JFrame {
         prompt.append("Energy source: ")
             .append(seller.getEnergySource()).append("\n");
 
-        prompt.append("Profile configured: ")
-            .append(seller.isProfileConfigured()).append("\n");
-
-        prompt.append("\nENERGY PERFORMANCE\n");
-        prompt.append("-------------------------\n");
-
-        prompt.append("Total generated units: ")
+        prompt.append("Generated units: ")
             .append(seller.getGeneratedUnits()).append("\n");
 
-        prompt.append("Available units: ")
+        prompt.append("Available units to sell: ")
             .append(seller.getAvailableUnits()).append("\n");
 
         prompt.append("Reserved units: ")
             .append(seller.getReservedUnits()).append("\n");
 
-        prompt.append("Current price per unit: Rs. ")
+        prompt.append("Current seller price per unit: Rs. ")
             .append(seller.getPricePerUnit()).append("\n");
 
-        prompt.append("Total earnings: Rs. ")
-            .append(seller.getTotalEarnings()).append("\n");
-
-        prompt.append("\nSELLER'S PUBLISHED OFFERS\n");
-        prompt.append("-------------------------\n");
+        prompt.append("\nSELLER'S EXISTING OFFERS\n");
 
         int offerCount =
             marketplaceData.getTradingService().getOfferCount();
 
-        boolean hasOwnOffers = false;
+        boolean ownOffersFound = false;
 
         for (int i = 0; i < offerCount; i++) {
 
@@ -719,30 +830,26 @@ public class SellerDashboard extends JFrame {
             if (offer.getSeller().getUserId()
                     .equalsIgnoreCase(seller.getUserId())) {
 
-                hasOwnOffers = true;
+                ownOffersFound = true;
 
-                prompt.append("Offer ID: ")
-                    .append(offer.getOfferId())
-                    .append(", Offered units: ")
-                    .append(offer.getOfferedUnits())
-                    .append(", Remaining units: ")
-                    .append(offer.getRemainingUnits())
-                    .append(", Price per unit: Rs. ")
-                    .append(offer.getPricePerUnit())
-                    .append(", Active: ")
-                    .append(offer.isActive())
-                    .append("\n");
+                prompt.append(
+                    "Offer ID: " + offer.getOfferId()
+                    + ", Quantity: " + offer.getOfferedUnits()
+                    + ", Remaining: " + offer.getRemainingUnits()
+                    + ", Price: Rs. " + offer.getPricePerUnit()
+                    + ", Active: " + offer.isActive()
+                    + "\n"
+                );
             }
         }
 
-        if (!hasOwnOffers) {
-            prompt.append("The seller has not published any offers.\n");
+        if (!ownOffersFound) {
+            prompt.append("No existing offers.\n");
         }
 
-        prompt.append("\nCURRENT MARKETPLACE OFFERS\n");
-        prompt.append("-------------------------\n");
+        prompt.append("\nCOMPETING MARKETPLACE OFFERS\n");
 
-        boolean hasMarketOffers = false;
+        boolean competitorsFound = false;
 
         for (int i = 0; i < offerCount; i++) {
 
@@ -750,75 +857,88 @@ public class SellerDashboard extends JFrame {
                 marketplaceData.getTradingService().getOffer(i);
 
             if (offer.isActive()
+                    && offer.getRemainingUnits() > 0
                     && !offer.getSeller().getUserId()
                         .equalsIgnoreCase(seller.getUserId())) {
 
-                hasMarketOffers = true;
+                competitorsFound = true;
 
-                prompt.append("Energy source: ")
-                    .append(offer.getSeller().getEnergySource())
-                    .append(", Remaining units: ")
-                    .append(offer.getRemainingUnits())
-                    .append(", Price per unit: Rs. ")
-                    .append(offer.getPricePerUnit())
-                    .append("\n");
+                prompt.append(
+                    "Energy source: "
+                    + offer.getSeller().getEnergySource()
+                    + ", Available quantity: "
+                    + offer.getRemainingUnits()
+                    + ", Price per unit: Rs. "
+                    + offer.getPricePerUnit()
+                    + "\n"
+                );
             }
         }
 
-        if (!hasMarketOffers) {
-            prompt.append("No other active marketplace offers are available.\n");
+        if (!competitorsFound) {
+            prompt.append("No competing active offers.\n");
         }
-
-        prompt.append("\nSALES PERFORMANCE\n");
-        prompt.append("-------------------------\n");
-
-        int transactionCount =
-            marketplaceData.getTradingService()
-                .getTransactionCount();
-
-        int sellerSales = 0;
-        double totalSalesRevenue = 0;
-
-        for (int i = 0; i < transactionCount; i++) {
-
-            Transaction transaction =
-                marketplaceData.getTradingService()
-                    .getTransaction(i);
-
-            if (transaction.getSeller().getUserId()
-                    .equalsIgnoreCase(seller.getUserId())) {
-
-                sellerSales++;
-
-                totalSalesRevenue += transaction.getTotalAmount();
-            }
-        }
-
-        prompt.append("Completed sales: ")
-            .append(sellerSales).append("\n");
-
-        prompt.append("Revenue from recorded sales: Rs. ")
-            .append(totalSalesRevenue).append("\n");
 
         prompt.append("\nYOUR TASK\n");
-        prompt.append("-------------------------\n");
 
         prompt.append(
-            "Provide your response using these sections:\n"
-            + "1. Overall seller performance\n"
-            + "2. Energy production analysis\n"
-            + "3. Pricing recommendations\n"
-            + "4. Comparison with available marketplace offers\n"
-            + "5. Selling strategy and practical suggestions\n"
-            + "6. Three specific actions the seller should consider\n\n"
-            + "Use the supplied numbers in your analysis. "
-            + "Do not invent missing information, market prices "
-            + "or financial guarantees. Clearly identify suggestions "
-            + "as recommendations rather than guaranteed outcomes. "
-            + "Keep the response professional and easy to understand."
+            "Analyse the seller's available quantity, existing offers, "
+            + "competing prices and competing available quantities.\n"
+            + "Recommend a practical quantity and competitive price "
+            + "for a new offer.\n\n"
+        );
+
+        prompt.append("STRICT RESPONSE FORMAT:\n");
+
+        prompt.append(
+            "RECOMMENDED_QUANTITY: [numeric quantity]\n"
+        );
+
+        prompt.append(
+            "RECOMMENDED_PRICE: [numeric price per unit]\n\n"
+        );
+
+        prompt.append("RULES:\n");
+
+        prompt.append(
+            "- Recommend a quantity greater than zero.\n"
+            + "- Never recommend more than the seller's available units.\n"
+            + "- Recommend a competitive and reasonable price.\n"
+            + "- Consider competing marketplace prices when available.\n"
+            + "- Do not invent market information.\n"
+            + "- Do not guarantee a sale or profit.\n"
+            + "- Return only the two required lines.\n"
+            + "- Do not include explanations, headings, tables or Markdown.\n"
+            + "- Return numeric values only after each colon.\n"
         );
 
         return prompt.toString();
+    }
+
+    // Extracts a numeric value from the AI response
+    private double extractAIValue(
+            String response,
+            String key) {
+
+        String[] lines = response.split("\\r?\\n");
+
+        for (String line : lines) {
+
+            String cleanedLine = line.trim();
+
+            if (cleanedLine.startsWith(key + ":")) {
+
+                String value = cleanedLine.substring(
+                    key.length() + 1
+                ).trim();
+
+                return Double.parseDouble(value);
+            }
+        }
+
+        throw new IllegalStateException(
+            "AI response is missing " + key
+        );
     }
 
     // Creates the profile and offers overview

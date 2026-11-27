@@ -1,4 +1,3 @@
-
 package sparkX.gui;
 
 import javax.swing.*;
@@ -9,7 +8,7 @@ import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
 import java.time.format.DateTimeFormatter;
 
-import sparkX.ai.GeminiService;
+import sparkX.ai.GroqService;
 import sparkX.data.MarketplaceData;
 import sparkX.model.Buyer;
 import sparkX.model.EnergyOffer;
@@ -35,7 +34,7 @@ public class BuyerDashboard extends JFrame {
     private JTextArea advisorOutput;
     private JButton advisorButton;
 
-    private GeminiService geminiService;
+    private GroqService groqService;
 
     public BuyerDashboard(
             MarketplaceData marketplaceData,
@@ -44,7 +43,7 @@ public class BuyerDashboard extends JFrame {
         this.marketplaceData = marketplaceData;
         this.buyer = buyer;
 
-        geminiService = new GeminiService();
+        groqService = new GroqService();
 
         setTitle("SparkX - Buyer Dashboard");
         setSize(1250, 850);
@@ -204,7 +203,6 @@ public class BuyerDashboard extends JFrame {
             new BoxLayout(contentPanel, BoxLayout.Y_AXIS)
         );
 
-        // OVERVIEW
         JLabel overviewLabel =
             new JLabel("Your Overview");
 
@@ -307,7 +305,6 @@ public class BuyerDashboard extends JFrame {
             new Dimension(Integer.MAX_VALUE, 85)
         );
 
-        // BUILD CONTENT
         contentPanel.add(overviewLabel);
         contentPanel.add(Box.createVerticalStrut(12));
         contentPanel.add(cardsPanel);
@@ -605,8 +602,8 @@ public class BuyerDashboard extends JFrame {
         heading.setForeground(blueColor);
 
         JLabel description = new JLabel(
-            "<html>Get AI-powered recommendations based on your "
-            + "energy demand, budget and available marketplace offers.</html>"
+            "<html>Get a practical offer recommendation based on "
+            + "your remaining demand, price limit and marketplace.</html>"
         );
 
         description.setFont(
@@ -631,7 +628,7 @@ public class BuyerDashboard extends JFrame {
         advisorOutput.setWrapStyleWord(true);
 
         advisorOutput.setFont(
-            new Font("Arial", Font.PLAIN, 14)
+            new Font("Arial", Font.PLAIN, 15)
         );
 
         advisorOutput.setBackground(backgroundColor);
@@ -642,9 +639,8 @@ public class BuyerDashboard extends JFrame {
         );
 
         advisorOutput.setText(
-            "Welcome to SparkX AI Energy Advisor!\n\n"
-            + "Click the button below to analyze your current "
-            + "energy requirements and available marketplace offers."
+            "Click the button below to find the most suitable "
+            + "energy offer for your remaining demand."
         );
 
         JScrollPane outputScrollPane =
@@ -652,7 +648,7 @@ public class BuyerDashboard extends JFrame {
 
         outputScrollPane.getViewport().setBackground(backgroundColor);
 
-        advisorButton = new JButton("Generate Advice");
+        advisorButton = new JButton("Get Offer Recommendation");
 
         styleButton(advisorButton, blueColor, Color.WHITE);
 
@@ -661,7 +657,7 @@ public class BuyerDashboard extends JFrame {
         );
 
         advisorButton.setPreferredSize(
-            new Dimension(180, 42)
+            new Dimension(230, 42)
         );
 
         advisorButton.addActionListener(
@@ -682,7 +678,7 @@ public class BuyerDashboard extends JFrame {
         return advisorPanel;
     }
 
-    // Generates buyer recommendations using Gemini
+    // Generates buyer recommendations using Groq
     private void generateBuyerAdvice() {
 
         if (!buyer.isProfileConfigured()) {
@@ -697,14 +693,56 @@ public class BuyerDashboard extends JFrame {
             return;
         }
 
+        if (buyer.getRequiredUnits() <= 0) {
+
+            advisorOutput.setText(
+                "Your energy demand has already been satisfied."
+            );
+
+            return;
+        }
+
+        boolean suitableOfferFound = false;
+
+        int offerCount =
+            marketplaceData.getTradingService().getOfferCount();
+
+        for (int i = 0; i < offerCount; i++) {
+
+            EnergyOffer offer =
+                marketplaceData.getTradingService().getOffer(i);
+
+            if (offer.isActive()
+                    && offer.getRemainingUnits() > 0
+                    && offer.getPricePerUnit()
+                        <= buyer.getMaxPricePerUnit()) {
+
+                suitableOfferFound = true;
+                break;
+            }
+        }
+
+        if (!suitableOfferFound) {
+
+            advisorOutput.setText(
+                "No active energy offer currently meets your "
+                + "maximum price of Rs. "
+                + String.format(
+                    "%.2f", buyer.getMaxPricePerUnit()
+                )
+                + " per unit."
+            );
+
+            return;
+        }
+
         String prompt = buildBuyerPrompt();
 
         advisorButton.setEnabled(false);
-        advisorButton.setText("Generating...");
+        advisorButton.setText("Analysing Offers...");
 
         advisorOutput.setText(
-            "Analyzing your energy requirements...\n\n"
-            + "Please wait while Gemini generates your recommendations."
+            "Analysing your demand and available offers..."
         );
 
         SwingWorker<String, Void> worker =
@@ -713,31 +751,112 @@ public class BuyerDashboard extends JFrame {
                 @Override
                 protected String doInBackground() throws Exception {
 
-                    return geminiService.generateResponse(prompt);
+                    return groqService.generateResponse(prompt);
                 }
 
                 @Override
                 protected void done() {
 
                     advisorButton.setEnabled(true);
-                    advisorButton.setText("Generate Advice");
+                    advisorButton.setText(
+                        "Get Offer Recommendation"
+                    );
 
                     try {
 
-                        String advice = get();
+                        String response = get();
+
+                        String recommendedOfferId =
+                            extractAIField(response, "OFFER_ID");
+
+                        double recommendedUnits =
+                            Double.parseDouble(
+                                extractAIField(response, "QUANTITY")
+                            );
+
+                        EnergyOffer recommendedOffer = null;
+
+                        int count =
+                            marketplaceData.getTradingService()
+                                .getOfferCount();
+
+                        for (int i = 0; i < count; i++) {
+
+                            EnergyOffer offer =
+                                marketplaceData.getTradingService()
+                                    .getOffer(i);
+
+                            if (String.valueOf(offer.getOfferId())
+                                    .equalsIgnoreCase(
+                                        recommendedOfferId
+                                    )) {
+
+                                recommendedOffer = offer;
+                                break;
+                            }
+                        }
+
+                        if (recommendedOffer == null
+                                || !recommendedOffer.isActive()
+                                || recommendedOffer.getRemainingUnits() <= 0
+                                || recommendedOffer.getPricePerUnit()
+                                    > buyer.getMaxPricePerUnit()) {
+
+                            throw new IllegalStateException(
+                                "AI selected an offer that is no longer "
+                                + "available or does not meet your price limit."
+                            );
+                        }
+
+                        double maximumQuantity = Math.min(
+                            buyer.getRequiredUnits(),
+                            recommendedOffer.getRemainingUnits()
+                        );
+
+                        if (Double.isNaN(recommendedUnits)
+                                || Double.isInfinite(recommendedUnits)
+                                || recommendedUnits <= 0
+                                || recommendedUnits > maximumQuantity) {
+
+                            throw new IllegalStateException(
+                                "AI returned an invalid purchase quantity."
+                            );
+                        }
+
+                        double price =
+                            recommendedOffer.getPricePerUnit();
+
+                        double totalPayment =
+                            recommendedUnits * price;
+
+                        String advice =
+                            "Purchase "
+                            + String.format("%.2f", recommendedUnits)
+                            + " units of "
+                            + recommendedOffer.getSeller().getEnergySource()
+                            + " energy from Offer #"
+                            + recommendedOffer.getOfferId()
+                            + " at Rs. "
+                            + String.format("%.2f", price)
+                            + " per unit, for a total payment of Rs. "
+                            + String.format("%.2f", totalPayment)
+                            + ".";
 
                         advisorOutput.setText(advice);
                         advisorOutput.setCaretPosition(0);
 
                     } catch (Exception ex) {
 
+                        Throwable cause = ex.getCause();
+
+                        String error = cause != null
+                            ? cause.getMessage()
+                            : ex.getMessage();
+
                         advisorOutput.setText(
-                            "Unable to generate AI recommendations.\n\n"
-                            + "Gemini may be temporarily unavailable, "
-                            + "or the API request may have failed.\n\n"
-                            + "Please try again later.\n\n"
-                            + "Technical details: "
-                            + ex.getMessage()
+                            "Unable to generate a valid offer "
+                            + "recommendation. Please try again.\n\n"
+                            + "Details: " + error
                         );
 
                         advisorOutput.setCaretPosition(0);
@@ -758,38 +877,30 @@ public class BuyerDashboard extends JFrame {
             + "a decentralized peer-to-peer energy trading system.\n\n"
         );
 
-        prompt.append("Analyze the following buyer information:\n");
+        prompt.append("BUYER INFORMATION\n");
+
+        prompt.append("Buyer: ")
+            .append(buyer.getFullName()).append("\n");
+
+        prompt.append("Remaining demand: ")
+            .append(buyer.getRequiredUnits())
+            .append(" units\n");
+
+        prompt.append("Maximum price per unit: Rs. ")
+            .append(buyer.getMaxPricePerUnit()).append("\n");
+
+        prompt.append("Amount already spent: Rs. ")
+            .append(buyer.getTotalSpent()).append("\n");
+
+        prompt.append("\nELIGIBLE MARKETPLACE OFFERS\n");
 
         prompt.append(
-            "Buyer name: " + buyer.getFullName() + "\n"
+            "Only offers at or below the buyer's maximum price "
+            + "are listed below.\n"
         );
-
-        prompt.append(
-            "Remaining energy demand: "
-            + buyer.getRequiredUnits() + " units\n"
-        );
-
-        prompt.append(
-            "Maximum acceptable price: Rs. "
-            + buyer.getMaxPricePerUnit() + " per unit\n"
-        );
-
-        prompt.append(
-            "Total amount already spent: Rs. "
-            + buyer.getTotalSpent() + "\n"
-        );
-
-        prompt.append(
-            "Demand satisfied: "
-            + buyer.isDemandSatisfied() + "\n\n"
-        );
-
-        prompt.append("Available active marketplace offers:\n");
 
         int offerCount =
             marketplaceData.getTradingService().getOfferCount();
-
-        int availableOfferCount = 0;
 
         for (int i = 0; i < offerCount; i++) {
 
@@ -797,9 +908,9 @@ public class BuyerDashboard extends JFrame {
                 marketplaceData.getTradingService().getOffer(i);
 
             if (offer.isActive()
-                    && offer.getRemainingUnits() > 0) {
-
-                availableOfferCount++;
+                    && offer.getRemainingUnits() > 0
+                    && offer.getPricePerUnit()
+                        <= buyer.getMaxPricePerUnit()) {
 
                 prompt.append("\nOffer ID: ")
                     .append(offer.getOfferId());
@@ -810,7 +921,7 @@ public class BuyerDashboard extends JFrame {
                 prompt.append("\nEnergy source: ")
                     .append(offer.getSeller().getEnergySource());
 
-                prompt.append("\nAvailable units: ")
+                prompt.append("\nAvailable quantity: ")
                     .append(offer.getRemainingUnits());
 
                 prompt.append("\nPrice per unit: Rs. ")
@@ -820,27 +931,52 @@ public class BuyerDashboard extends JFrame {
             }
         }
 
-        if (availableOfferCount == 0) {
+        prompt.append(
+            "\nYOUR TASK\n"
+            + "Choose the most economical suitable offer for the buyer.\n"
+            + "Prefer the lowest price per unit, while ensuring that "
+            + "the offer has enough available energy.\n"
+            + "Recommend a quantity that does not exceed the buyer's "
+            + "remaining demand or the offer's available quantity.\n\n"
+        );
 
-            prompt.append(
-                "There are currently no active marketplace offers.\n"
-            );
-        }
+        prompt.append("STRICT RESPONSE FORMAT:\n");
+
+        prompt.append("OFFER_ID: [exact offer ID]\n");
+        prompt.append("QUANTITY: [numeric quantity]\n\n");
 
         prompt.append(
-            "\nProvide a clear and practical analysis covering:\n"
-            + "1. Whether the available energy supply can meet "
-            + "the buyer's remaining demand.\n"
-            + "2. Which offers are within the buyer's maximum budget.\n"
-            + "3. The most economical available options.\n"
-            + "4. Any shortage between demand and available supply.\n"
-            + "5. Practical recommendations for the buyer.\n\n"
-            + "Use the actual figures provided. Do not invent offers, "
-            + "prices, or energy quantities. Do not claim that a purchase "
-            + "has been made. Format the response with clear headings."
+            "Return only these two lines. Do not include explanations, "
+            + "headings, Markdown, or additional text. Do not invent "
+            + "offer IDs, prices, or quantities. Do not claim that "
+            + "a purchase has been completed."
         );
 
         return prompt.toString();
+    }
+
+    // Extracts a value from the AI response
+    private String extractAIField(
+            String response,
+            String key) {
+
+        String[] lines = response.split("\\r?\\n");
+
+        for (String line : lines) {
+
+            String cleanedLine = line.trim();
+
+            if (cleanedLine.startsWith(key + ":")) {
+
+                return cleanedLine.substring(
+                    key.length() + 1
+                ).trim();
+            }
+        }
+
+        throw new IllegalStateException(
+            "AI response is missing " + key
+        );
     }
 
     // Applies common table styling

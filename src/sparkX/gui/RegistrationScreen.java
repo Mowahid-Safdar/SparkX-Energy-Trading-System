@@ -26,6 +26,8 @@ public class RegistrationScreen extends JFrame {
     private Color textColor = new Color(241, 245, 249);
     private Color mutedColor = new Color(154, 168, 181);
 
+    private final int fieldWidth = 260;
+
     public RegistrationScreen(MarketplaceData marketplaceData) {
 
         this.marketplaceData = marketplaceData;
@@ -103,9 +105,17 @@ public class RegistrationScreen extends JFrame {
         roleComboBox.setFont(new Font("Arial", Font.PLAIN, 14));
         roleComboBox.setBackground(panelColor);
         roleComboBox.setForeground(textColor);
-        roleComboBox.setMaximumSize(
-            new Dimension(Integer.MAX_VALUE, 42)
+
+        roleComboBox.setPreferredSize(
+            new Dimension(fieldWidth, 42)
         );
+        roleComboBox.setMinimumSize(
+            new Dimension(fieldWidth, 42)
+        );
+        roleComboBox.setMaximumSize(
+            new Dimension(fieldWidth, 42)
+        );
+        roleComboBox.setAlignmentX(Component.CENTER_ALIGNMENT);
 
         formPanel.add(roleComboBox);
 
@@ -142,10 +152,8 @@ public class RegistrationScreen extends JFrame {
         backButton.setAlignmentX(Component.CENTER_ALIGNMENT);
 
         backButton.addActionListener(e -> {
-
             new WelcomeScreen(marketplaceData);
             dispose();
-
         });
 
         formPanel.add(backButton);
@@ -163,7 +171,18 @@ public class RegistrationScreen extends JFrame {
         JLabel label = new JLabel(text);
         label.setFont(new Font("Arial", Font.BOLD, 13));
         label.setForeground(textColor);
-        label.setAlignmentX(Component.LEFT_ALIGNMENT);
+
+        label.setPreferredSize(
+            new Dimension(fieldWidth, 20)
+        );
+        label.setMinimumSize(
+            new Dimension(fieldWidth, 20)
+        );
+        label.setMaximumSize(
+            new Dimension(fieldWidth, 20)
+        );
+
+        label.setAlignmentX(Component.CENTER_ALIGNMENT);
 
         return label;
     }
@@ -192,11 +211,17 @@ public class RegistrationScreen extends JFrame {
             )
         );
 
+        field.setPreferredSize(
+            new Dimension(fieldWidth, 42)
+        );
+        field.setMinimumSize(
+            new Dimension(fieldWidth, 42)
+        );
         field.setMaximumSize(
-            new Dimension(Integer.MAX_VALUE, 42)
+            new Dimension(fieldWidth, 42)
         );
 
-        field.setAlignmentX(Component.LEFT_ALIGNMENT);
+        field.setAlignmentX(Component.CENTER_ALIGNMENT);
     }
 
     // Handles account registration
