@@ -16,9 +16,9 @@ target/
 # Private credentials and configuration
 .env
 .env.*
+!.env.example
 *.key
 secrets.properties
 
-.env
-.env.*
-!.env.example
+# Local application data
+sparkx-data/*.dat
